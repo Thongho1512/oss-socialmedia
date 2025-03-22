@@ -1,0 +1,33 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: socialmedia
+  profiles:
+    active: @spring.profiles.active@
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+
+logging:
+  level:
+    root: INFO
+    web: INFO
+    org.springframework.web: DEBUG
+    org.springframework.messaging: DEBUG
+    org.springframework.web.socket: DEBUG
+    org.springdoc: DEBUG
+
+
+
+openapi:
+  service:
+    title: Backend API document
+    version: v1.1.0
+    server: http://localhost:8080
+    
+

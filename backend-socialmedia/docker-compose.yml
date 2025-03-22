@@ -1,0 +1,23 @@
+services:
+  mongodb:
+    image: mongo:8.0.4
+    container_name: mongodb
+    cap_add:
+      - SYS_NICE
+    restart: always
+    environment:
+      - MONGO_INITDB_DATABASE=testdb
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongodb_data:/data/db
+      - ./initdb.js:/docker-entrypoint-initdb.d/initdb.js
+    networks:
+      - default
+
+networks:
+  default:
+    name: socialmedia
+
+volumes:
+  mongodb_data:
