@@ -230,7 +230,7 @@ public class PostServiceImpl implements PostService{
     }
     @Override
     public List<UserHomPageDTO> findPostByUserId() {
-        List<PostEntity> post = postRepository.findByUserId("67dd4bf8483bb1089454e1e0");
+        List<PostEntity> post = new ArrayList<>();
         String userId = userIsRequesting.getIdUserIsRequesting();
         List<FollowEntity> follow = followService.findByFollowerId(userId);
         for(int i = 0; i < follow.size(); i++){
