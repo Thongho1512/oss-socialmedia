@@ -26,6 +26,8 @@ public class EmailController {
     @PostMapping("/send")
     public ResponseEntity<String> sendEmail(@RequestBody ReqEmail emailRequest) {
         try {
+            // Tạo URL xác thực từ email người dùng
+            
             String response = emailService.sendEmail(emailRequest);
             return ResponseEntity.ok(response);
         } catch (IOException e) {
