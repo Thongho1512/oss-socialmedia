@@ -26,4 +26,7 @@ public interface PostService {
     void updateShare(String id);
 
     List<UserHomPageDTO> findPostByUserId();
+
+    // get posts of user is authenticated
+    List<PostEntity> getPostsByUserAuth();
 }

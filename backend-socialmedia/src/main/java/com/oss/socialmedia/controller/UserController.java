@@ -1,9 +1,11 @@
 package com.oss.socialmedia.controller;
 
+import com.oss.socialmedia.controller.request.ReqAvatarUrl;
 import com.oss.socialmedia.controller.request.ReqBio;
 import com.oss.socialmedia.controller.request.ReqCreationUserDTO;
 import com.oss.socialmedia.controller.request.ReqPasswordUserDTO;
 import com.oss.socialmedia.controller.request.ReqUpdateUserDTO;
+import com.oss.socialmedia.service.PostService;
 import com.oss.socialmedia.service.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,6 +29,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
+    private final PostService postService;
 
 
     @Operation(summary = "users", description = "Fetch all users")
@@ -50,7 +54,8 @@ public class UserController {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("Status", HttpStatus.OK.value());
         map.put("Message", "Get user successfully");
-        map.put("Data", userService.findById(userId));
+        map.put("Data1", userService.findById(userId));
+        map.put("Data2", postService.getPostsByUserAuth());
         return ResponseEntity.ok(map);
     }
 
@@ -108,4 +113,15 @@ public class UserController {
         map.put("Data", "success");
         return ResponseEntity.ok(map);
     }
+    @Operation(summary = "Users", description = "API update user's avatar")
+    @PatchMapping(value = "/bio", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> updateAvatar(@ModelAttribute ReqAvatarUrl req) {
+        userService.updateAvatarUrl(req);
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("Status", HttpStatus.OK.value());
+        map.put("Message", "Bio updated successfully!");
+        map.put("Data", "success");
+        return ResponseEntity.ok(map);
+    }
+
 }

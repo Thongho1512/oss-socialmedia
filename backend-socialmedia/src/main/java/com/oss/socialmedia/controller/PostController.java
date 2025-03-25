@@ -33,7 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 public class PostController {
     private final PostService postService;
 
-    @Operation(summary = "Posts", description = "Fetch all roles")
+    @Operation(summary = "Posts", description = "Fetch all posts")
     @GetMapping("")
     public ResponseEntity<Map<String, Object>> getList(
             @RequestParam(required = false) String keyword,
@@ -81,4 +81,5 @@ public class PostController {
         map.put("Data", "");
         return ResponseEntity.ok(map);
     }
+    
 }

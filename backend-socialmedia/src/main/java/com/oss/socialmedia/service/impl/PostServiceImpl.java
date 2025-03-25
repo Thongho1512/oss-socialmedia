@@ -255,4 +255,11 @@ public class PostServiceImpl implements PostService{
         }
         return userHomPageDTOList;
     }
+    @Override
+    public List<PostEntity> getPostsByUserAuth() {
+        String userId = userIsRequesting.getIdUserIsRequesting();
+        return postRepository.findByUserId(userId);
+    }
+
+    
 }
