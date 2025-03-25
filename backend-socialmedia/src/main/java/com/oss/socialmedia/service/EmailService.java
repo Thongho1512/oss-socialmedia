@@ -27,8 +27,7 @@ public class EmailService {
 
     public String sendEmail(ReqEmail emailRequest) throws IOException {
         // String emailContent = getEmailTemplate();
-        String getEmail = emailRequest.getRecipientEmails().get(0);
-        String frontendUrl = "http://localhost:3000/register-info?email=" + getEmail;
+        String frontendUrl = "http://localhost:3000/register-info?email=" + emailRequest.getRecipientEmails();
         String emailContent = "<html>" +
             "<head>" +
             "<meta charset=\"UTF-8\">" +
