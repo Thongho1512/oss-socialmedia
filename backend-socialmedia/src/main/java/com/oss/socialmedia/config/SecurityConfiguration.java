@@ -51,7 +51,7 @@ public class SecurityConfiguration {
                 "/v3/api-docs/**",
                 "/swagger-ui/**",
                 "/api/v1/mockup/users/**",
-                "/upload/**",
+                "/upload/**"
         };
 
         http
@@ -85,7 +85,8 @@ public class SecurityConfiguration {
                         "/webjars/**",
                         "/swagger-ui/**",
                         "/swagger-ui.html", 
-                        "/v3/api-docs/**");
+                        "/v3/api-docs/**",
+                        "/upload/**");
     }
 
     // dùng cho phân quyền
