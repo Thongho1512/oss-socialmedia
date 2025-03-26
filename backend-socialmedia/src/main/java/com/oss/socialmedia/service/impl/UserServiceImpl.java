@@ -91,7 +91,11 @@ public class UserServiceImpl implements UserService {
                 .setPhoneNumber(user.getPhoneNumber())
                 .setUserName(user.getUsername())
                 .setRoles(user.getRoles())
-                
+                .setFollowerCount(user.getFollowerCount())
+                .setFollowingCount(user.getFollowingCount())
+                .setBio(user.getBio())
+                .setAvatarUrl(user.getAvatar_url())
+                .setIsPrivate(user.getIsPrivate())
                 .build();
         return dto;
     }
