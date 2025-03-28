@@ -1,5 +1,5 @@
 1. Cài đặt.
-install jdk 21, maven 3.9.9, mongodb 8.0, visual studio code.
+install jdk 21, maven 3.9.9, mongodb 8.0, apache tomcat 10.0.20, visual studio code.
 
 
 2. Cài biến môi trường 
