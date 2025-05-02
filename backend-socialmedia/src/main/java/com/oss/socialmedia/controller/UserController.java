@@ -50,12 +50,12 @@ public class UserController {
     @Operation(summary = "Users", description = "API get user details by id")
     @GetMapping("/{userId}")
     public ResponseEntity<Map<String, Object>> getUser(@PathVariable String userId) {
-
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("Status", HttpStatus.OK.value());
         map.put("Message", "Get user successfully");
         map.put("Data1", userService.findById(userId));
-        map.put("Data2", postService.getPostsByUserAuth());
+        // Sử dụng userId từ path parameter thay vì lấy từ người dùng đang đăng nhập
+        map.put("Data2", postService.getPostsByUserId(userId)); 
         return ResponseEntity.ok(map);
     }
 

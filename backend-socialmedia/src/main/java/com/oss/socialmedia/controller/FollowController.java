@@ -62,8 +62,8 @@ public class FollowController {
 
     @Operation(summary = "Follows", description = "API delete follow")
     @DeleteMapping("/{followId}")
-    public ResponseEntity<Map<String, Object>> deleteFollow(@PathVariable String likeId) {
-        followService.delete(likeId);
+    public ResponseEntity<Map<String, Object>> deleteFollow(@PathVariable String followId) {
+        followService.delete(followId);
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("Status", HttpStatus.OK.value());
         map.put("Message", "Delete follow successfully!");

@@ -1,10 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 const Login = () => {
   const [formData, setFormData] = useState({ username: "", password: "" });
   const navigate = useNavigate();
+  
+  // Kiểm tra xem người dùng đã đăng nhập chưa
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    const userId = localStorage.getItem("user_id");
+    
+    if (token && userId) {
+      // Đã đăng nhập, không tự động chuyển hướng
+      console.log("Người dùng đã đăng nhập.");
+    }
+  }, [navigate]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -16,11 +27,17 @@ const Login = () => {
         "http://localhost:8080/api/v1/auth/login",
         formData
       );
+
+      // Lưu access token vào localStorage
+      localStorage.setItem("access_token", response.data.access_token);
+      localStorage.setItem("user_id", response.data.user.id);
+
       console.log("Đăng nhập thành công:", response.data);
-      alert("Đăng nhập thành công!");
+      // Chuyển hướng đến homepage
+      navigate("/homepage", { replace: true });
     } catch (error) {
-      console.error("Lỗi đăng nhập:", error);
-      alert("Đăng nhập thất bại!");
+      console.error("Lỗi đăng nhập:", error.response);
+      alert("Đăng nhập thất bại! Vui lòng kiểm tra lại thông tin.");
     }
   };
 
@@ -44,6 +61,11 @@ const Login = () => {
           value={formData.password}
           onChange={handleChange}
           className="border p-2 rounded w-full mb-4"
+          onKeyPress={(e) => {
+            if (e.key === 'Enter') {
+              handleLogin();
+            }
+          }}
         />
 
         <button
@@ -56,7 +78,7 @@ const Login = () => {
         <p className="text-center">Chưa có tài khoản?</p>
 
         <button
-          onClick={() => navigate("/verify-email")}
+          onClick={() => navigate("/auth/verify-email")}
           className="w-full py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
         >
           Sign Up

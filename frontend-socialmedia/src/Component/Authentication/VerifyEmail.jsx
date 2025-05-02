@@ -8,8 +8,6 @@ const VerifyEmail = () => {
 
   const handleSendVerifyEmail = async () => {
     try {
-      const verifyLink = `http://localhost:3000/register-info?email=${encodeURIComponent(email)}`;
-
       await axios.post("http://localhost:8080/api/v1/email/send", {
         recipientEmails: [email], // Gửi email
       });

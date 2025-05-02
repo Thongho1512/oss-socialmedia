@@ -19,10 +19,10 @@ const RegisterInfo = () => {
     roles: ["USER"],
   });
 
-  // Lấy email từ URL khi component được mount
   useEffect(() => {
-    const emailFromUrl = searchParams.get("email");
+    let emailFromUrl = searchParams.get("email");
     if (emailFromUrl) {
+      emailFromUrl = emailFromUrl.replace(/[\[\]]/g, "");
       setFormData((prevData) => ({ ...prevData, email: emailFromUrl }));
     }
   }, [searchParams]);
@@ -36,7 +36,18 @@ const RegisterInfo = () => {
     try {
       const response = await axios.post(
         "http://localhost:8080/api/v1/auth/register",
-        { ...formData, status: "ACTIVE" }, // Đổi status thành ACTIVE khi đăng ký
+        {
+          lastName: formData.lastName,
+          firstName: formData.firstName,
+          username: formData.username,
+          dob: formData.dob,
+          email: formData.email,
+          password: formData.password,
+          phoneNumber: formData.phoneNumber,
+          gender: formData.gender,
+          status: "ACTIVE",
+          roles: ["USER"],
+        },
         {
           headers: { "Content-Type": "application/json" },
         }
@@ -44,7 +55,7 @@ const RegisterInfo = () => {
 
       console.log("Đăng ký thành công:", response.data);
       alert("Đăng ký thành công! Bạn có thể đăng nhập.");
-      navigate("/login"); // Chuyển hướng sang trang đăng nhập
+      navigate("/auth/login"); // Chuyển hướng sang trang đăng nhập
     } catch (error) {
       console.error("Lỗi đăng ký:", error.response);
       alert("Đăng ký thất bại! Vui lòng kiểm tra lại thông tin.");
