@@ -1,15 +1,17 @@
-import { Route, Routes } from "react-router-dom";
-import HomePage from "./Component/HomePage/HomePage";
-import Users from "./Component/Users/Users";
-import "./App.css";
-import Authentication from "./Component/Authentication/Authentication";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Login from "./Component/Authentication/Login";
+import VerifyEmail from "./Component/Authentication/VerifyEmail";
+import RegisterInfo from "./Component/Authentication/RegisterInfo";
+
 function App() {
   return (
-    <div className="App">
-      <Routes>
-        <Route path="/*" element={true ? <HomePage /> : <Authentication />} />
-      </Routes>
-    </div>
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
+      <Route path="/register-info" element={<RegisterInfo />} />
+      <Route path="*" element={<Login />} />
+    </Routes>
   );
 }
+
 export default App;

@@ -1,0 +1,9 @@
+/* Ẩn thanh cuộn nhưng vẫn có thể cuộn được */
+.hideScrollBar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE và Edge */
+}
+
+.hideScrollBar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
