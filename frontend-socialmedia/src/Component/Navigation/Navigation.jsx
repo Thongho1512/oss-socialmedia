@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Avatar, Button, MenuItem, Menu } from "@mui/material";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
@@ -11,11 +11,24 @@ import SettingsIcon from "@mui/icons-material/Settings";
 
 const Navigation = ({ collapsed = false }) => {
   const [anchorEl, setAnchorEl] = useState(null);
+  const [avatarUrl, setAvatarUrl] = useState(null);
   const open = Boolean(anchorEl);
   const navigate = useNavigate();
   const location = useLocation();
   const { logout } = useContext(AuthContext);
   const { userData } = useContext(UserContext);
+
+  // Check localStorage for avatar image when userData changes
+  useEffect(() => {
+    const localAvatar = localStorage.getItem('user_avatar');
+    if (localAvatar) {
+      setAvatarUrl(localAvatar);
+    } else if (userData?.avatarUrl) {
+      setAvatarUrl(userData.avatarUrl);
+    } else {
+      setAvatarUrl("https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg");
+    }
+  }, [userData]);
 
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -78,12 +91,12 @@ const Navigation = ({ collapsed = false }) => {
     <div className="h-full flex flex-col py-2">
       {/* Logo */}
       <div className={`mb-4 ${collapsed ? 'px-2' : 'px-4'} py-2`}>
-        <div className="w-10 h-10 rounded-full hover:bg-blue-900/20 flex items-center justify-center">
-          <svg viewBox="0 0 24 24" aria-hidden="true" className="w-7 h-7 fill-white">
-            <g>
-              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path>
-            </g>
-          </svg>
+        <div className="w-20 h-20 rounded-full hover:bg-blue-900/20 flex items-center justify-center">
+          <img 
+            src="/logo.png" 
+            alt="App Logo" 
+            className="w-14 h-14" 
+          />
         </div>
       </div>
 
@@ -109,6 +122,7 @@ const Navigation = ({ collapsed = false }) => {
       {/* Post Button */}
       <div className={`mt-4 ${collapsed ? 'px-1' : 'px-3'}`}>
         <Button
+          onClick={() => navigate('/homepage/home')}
           sx={{
             width: "100%",
             borderRadius: "9999px",
@@ -142,10 +156,7 @@ const Navigation = ({ collapsed = false }) => {
           <div className="flex items-center space-x-3">
             <Avatar
               alt={userData?.username || "User"}
-              src={
-                userData?.avatarUrl ||
-                "https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg"
-              }
+              src={avatarUrl}
               sx={{ width: 40, height: 40 }}
             />
             {!collapsed && (

@@ -164,17 +164,20 @@ const UsersList = ({ visible, onClose, onSelectUser }) => {
               <React.Fragment key={user.id}>
                 <ListItemButton
                   onClick={() => handleUserSelect(user)}
-                  sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}
+                  sx={{ '&:hover': { backgroundColor: '#f5f5f5' }, py: 1 }}
                 >
                   <ListItemAvatar>
                     <Avatar 
                       alt={user.username} 
-                      src={user.avatarUrl || "https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg"} 
+                      src={user.avatarUrl || "https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg"}
+                      sx={{ width: 32, height: 32 }}
                     />
                   </ListItemAvatar>
                   <ListItemText
                     primary={`${user.firstName || ""} ${user.lastName || ""}`}
                     secondary={`@${user.username || ""}`}
+                    primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 500 }}
+                    secondaryTypographyProps={{ fontSize: '0.8rem' }}
                   />
                 </ListItemButton>
                 <Divider component="li" />

@@ -5,7 +5,7 @@ import RightPart from "../RightPart/RightPart";
 import Grid from "@mui/material/Grid";
 import { Routes, Route } from "react-router-dom";
 import Profile from "../Profile/Profile";
-import TripleTDetails from "../TripleTDetails/TripleTDetails";
+import TripleTDetails from "../TripleTDetails/TripleTDetails"; // Import the new component
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 
@@ -60,7 +60,7 @@ const HomePage = () => {
                 <Route path="" element={<HomeSection />} />
                 <Route path="home" element={<HomeSection />} />
                 <Route path="profile/:id" element={<Profile />} />
-                <Route path="triplet/:id" element={<TripleTDetails />} />
+                <Route path="triplet/:postId" element={<TripleTDetails />} /> {/* Add route for TripleTDetails */}
               </Routes>
             )}
           </div>

@@ -81,6 +81,12 @@ const RightPart = ({ onUserSelect }) => {
     setShowMessages(false);
   };
 
+  // Function to handle trend click and redirect to Google search
+  const handleTrendClick = (trendTag) => {
+    const searchQuery = encodeURIComponent(trendTag);
+    window.open(`https://www.google.com/search?q=${searchQuery}`, '_blank');
+  };
+
   return (
     <div className="h-full">
       {/* Search Bar */}
@@ -155,60 +161,23 @@ const RightPart = ({ onUserSelect }) => {
             <div 
               key={trend.id}
               className="px-4 py-3 hover:bg-gray-800 cursor-pointer flex items-start justify-between"
+              onClick={() => handleTrendClick(trend.tag)}
             >
               <div>
                 <p className="text-gray-500 text-xs">{trend.category}</p>
                 <p className="font-bold my-0.5">{trend.tag}</p>
                 <p className="text-gray-500 text-xs">{trend.postsCount.toLocaleString()} posts</p>
               </div>
-              <button className="text-gray-500 hover:text-blue-400 hover:bg-blue-400/10 p-1.5 rounded-full">
+              <button 
+                className="text-gray-500 hover:text-blue-400 hover:bg-blue-400/10 p-1.5 rounded-full"
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent triggering parent's onClick
+                }}
+              >
                 <MoreHorizIcon fontSize="small" />
               </button>
             </div>
           ))}
-          
-          <div className="px-4 py-3 text-blue-400 hover:bg-gray-800">
-            <span>Show more</span>
-          </div>
-        </div>
-      )}
-
-      {/* Who to follow */}
-      {!isSearching && searchResults.length === 0 && (
-        <div className="mt-4 bg-[#16181c] rounded-2xl overflow-hidden">
-          <h2 className="font-bold text-xl px-4 py-3 border-b border-gray-800">Who to follow</h2>
-          
-          <div className="px-4 py-3 hover:bg-gray-800 cursor-pointer flex items-center justify-between">
-            <div className="flex items-center">
-              <Avatar
-                src="https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg"
-                sx={{ width: 48, height: 48, mr: 2 }}
-              />
-              <div>
-                <p className="font-bold">John Doe</p>
-                <p className="text-gray-500">@johndoe</p>
-              </div>
-            </div>
-            <button className="bg-white hover:bg-gray-200 text-black font-bold py-1.5 px-4 rounded-full text-sm">
-              Follow
-            </button>
-          </div>
-          
-          <div className="px-4 py-3 hover:bg-gray-800 cursor-pointer flex items-center justify-between">
-            <div className="flex items-center">
-              <Avatar
-                src="https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg"
-                sx={{ width: 48, height: 48, mr: 2 }}
-              />
-              <div>
-                <p className="font-bold">Jane Smith</p>
-                <p className="text-gray-500">@janesmith</p>
-              </div>
-            </div>
-            <button className="bg-white hover:bg-gray-200 text-black font-bold py-1.5 px-4 rounded-full text-sm">
-              Follow
-            </button>
-          </div>
           
           <div className="px-4 py-3 text-blue-400 hover:bg-gray-800">
             <span>Show more</span>
