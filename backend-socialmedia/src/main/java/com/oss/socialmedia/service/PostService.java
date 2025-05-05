@@ -29,4 +29,6 @@ public interface PostService {
 
     // get posts of user is authenticated
     List<PostEntity> getPostsByUserAuth();
+
+    List<PostEntity> getPostsByUserId(String userId);
 }

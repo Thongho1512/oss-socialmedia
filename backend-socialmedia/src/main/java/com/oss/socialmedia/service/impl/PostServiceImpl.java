@@ -261,5 +261,9 @@ public class PostServiceImpl implements PostService{
         return postRepository.findByUserId(userId);
     }
 
+    @Override
+    public List<PostEntity> getPostsByUserId(String userId) {
+        return postRepository.findByUserId(userId);
+    }
     
 }
