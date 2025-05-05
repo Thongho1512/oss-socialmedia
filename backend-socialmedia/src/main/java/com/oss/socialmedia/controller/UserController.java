@@ -114,12 +114,12 @@ public class UserController {
         return ResponseEntity.ok(map);
     }
     @Operation(summary = "Users", description = "API update user's avatar")
-    @PatchMapping(value = "/bio", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PatchMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> updateAvatar(@ModelAttribute ReqAvatarUrl req) {
         userService.updateAvatarUrl(req);
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("Status", HttpStatus.OK.value());
-        map.put("Message", "Bio updated successfully!");
+        map.put("Message", "Avatar updated successfully!");
         map.put("Data", "success");
         return ResponseEntity.ok(map);
     }
