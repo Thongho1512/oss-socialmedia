@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, useCallback } from "react";
+import { createContext, useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 
 // Tạo instance Axios với cấu hình cơ bản
@@ -33,6 +33,41 @@ export const UserProvider = ({ children }) => {
 
   // New state for tracking followed user IDs with their follow IDs
   const [followedUsers, setFollowedUsers] = useState({}); // { userId: followId }
+  
+  // New state for tracking post likes with their like IDs for persistence
+  const [postLikeMap, setPostLikeMap] = useState({}); // { postId: {liked: boolean, likeId: string} }
+
+  // Ref to track if initial likes have been loaded
+  const initialLikesLoaded = useRef(false);
+  
+  // Track last likes refresh time to avoid too frequent refreshes
+  const [lastLikesRefreshTime, setLastLikesRefreshTime] = useState(0);
+
+  // Load saved like state from localStorage on initial render
+  useEffect(() => {
+    const savedLikes = localStorage.getItem('user_liked_posts');
+    if (savedLikes) {
+      try {
+        const parsedLikes = JSON.parse(savedLikes);
+        setPostLikeMap(parsedLikes);
+      } catch (error) {
+        console.error("Error parsing saved likes from localStorage:", error);
+      }
+    }
+    
+    // Initial load of likes data when component mounts
+    if (!initialLikesLoaded.current) {
+      fetchUserLikes();
+      initialLikesLoaded.current = true;
+    }
+  }, []);
+
+  // Save like state to localStorage whenever it changes
+  useEffect(() => {
+    if (Object.keys(postLikeMap).length > 0) {
+      localStorage.setItem('user_liked_posts', JSON.stringify(postLikeMap));
+    }
+  }, [postLikeMap]);
 
   useEffect(() => {
     const userId = localStorage.getItem("user_id");
@@ -75,6 +110,15 @@ export const UserProvider = ({ children }) => {
     fetchUserData();
   }, []);
 
+  // Periodically refresh likes data (every 2 minutes)
+  useEffect(() => {
+    const refreshInterval = setInterval(() => {
+      fetchUserLikes();
+    }, 2 * 60 * 1000); // 2 minutes
+    
+    return () => clearInterval(refreshInterval);
+  }, []);
+
   const fetchUserById = useCallback(async (userId) => {
     try {
       setLoading(true);
@@ -113,37 +157,100 @@ export const UserProvider = ({ children }) => {
     }
   }, []);
 
-  // Fetch user likes
-  const fetchUserLikes = useCallback(async (page = 0, size = 10) => {
+  // Enhanced fetchUserLikes to get all likes with proper pagination
+  const fetchUserLikes = useCallback(async (refreshForce = false) => {
     const userId = localStorage.getItem("user_id");
     const accessToken = localStorage.getItem("access_token");
     
     if (!userId || !accessToken) return;
     
+    // Check if we need to refresh based on time (prevent too frequent refreshes)
+    const currentTime = Date.now();
+    if (!refreshForce && currentTime - lastLikesRefreshTime < 10000) { // 10 seconds minimum between refreshes
+      console.log("Skipping likes refresh, too soon since last refresh");
+      return;
+    }
+    
     try {
       setLikesLoading(true);
-      const response = await api.get(`/likes?page=${page}&size=${size}`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+      
+      // Use a larger size to get more likes at once, and implement pagination
+      let page = 0;
+      const size = 100; // Get more likes at once
+      let allLikes = [];
+      let hasMorePages = true;
+      
+      while (hasMorePages) {
+        console.log(`Fetching likes page ${page}`);
+        const response = await api.get(`/likes?page=${page}&size=${size}`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
 
-      if (response.data && response.data.Status === 200) {
-        // Filter likes for the current user
-        const userLikesData = response.data.Data.likes.filter(
-          like => String(like.userId) === String(userId)
-        );
-        
-        setUserLikes(prevLikes => 
-          page === 0 ? userLikesData : [...prevLikes, ...userLikesData]
-        );
+        if (response.data && response.data.Status === 200) {
+          // Make sure we have likes data in the expected format
+          if (!response.data.Data || !response.data.Data.likes || !Array.isArray(response.data.Data.likes)) {
+            console.error("Unexpected likes data format:", response.data.Data);
+            break;
+          }
+          
+          // Get likes for this page
+          const pageLikes = response.data.Data.likes;
+          if (pageLikes.length === 0) {
+            hasMorePages = false;
+            break;
+          }
+          
+          // Add to our collection
+          allLikes = [...allLikes, ...pageLikes];
+          
+          // Check if we have more pages
+          const totalPages = response.data.Data.totalPages || 1;
+          if (page >= totalPages - 1) {
+            hasMorePages = false;
+          } else {
+            page++;
+          }
+        } else {
+          console.error("Failed to fetch likes:", response.data);
+          break;
+        }
       }
+      
+      console.log(`Fetched a total of ${allLikes.length} likes`);
+      
+      // Filter likes for the current user
+      const userLikesData = allLikes.filter(like => String(like.userId) === String(userId));
+      
+      // Update userLikes state
+      setUserLikes(userLikesData);
+      
+      // Build a comprehensive mapping of ALL likes for better performance
+      const newLikeMap = {};
+      userLikesData.forEach(like => {
+        if (like.postId) { // Make sure we have a valid postId
+          newLikeMap[like.postId] = {
+            liked: true,
+            likeId: like.id
+          };
+        }
+      });
+      
+      // Update the postLikeMap for persistence
+      setPostLikeMap(prevMap => ({
+        ...prevMap,
+        ...newLikeMap
+      }));
+      
+      // Update last refresh time
+      setLastLikesRefreshTime(Date.now());
     } catch (err) {
       console.error("Lỗi khi tải dữ liệu lượt thích:", err);
     } finally {
       setLikesLoading(false);
     }
-  }, []);
+  }, [lastLikesRefreshTime]);
 
   // Fetch user shares
   const fetchUserShares = useCallback(async (page = 0, size = 10) => {
@@ -241,8 +348,10 @@ export const UserProvider = ({ children }) => {
   // Handle adding a new like
   const addLike = useCallback(async (postId) => {
     const accessToken = localStorage.getItem("access_token");
+    const userId = localStorage.getItem("user_id");
     
     try {
+      console.log(`Adding like for post: ${postId}`);
       const response = await api.post(
         "/likes",
         { postId },
@@ -253,24 +362,68 @@ export const UserProvider = ({ children }) => {
         }
       );
 
+      console.log("Add like API response:", response.data);
+      
       if (response.data && response.data.Status === 200) {
+        // Create a like object even if API doesn't return complete data
+        const newLike = response.data.Data || {
+          id: `temp-${Date.now()}`, // Generate a temporary ID if none provided
+          postId: postId,
+          userId: userId,
+          createdAt: new Date().toISOString()
+        };
+        
+        // Ensure we have a valid like ID
+        if (!newLike.id && response.data.Message) {
+          // Some APIs return the ID in a different format or in the message
+          const idMatch = response.data.Message?.match(/ID: ([a-zA-Z0-9-]+)/);
+          if (idMatch && idMatch[1]) {
+            newLike.id = idMatch[1];
+          }
+        }
+        
         // Add the new like to the userLikes state
-        const newLike = response.data.Data;
         setUserLikes(prevLikes => [newLike, ...prevLikes]);
+        
+        // Update the postLikeMap for persistence
+        setPostLikeMap(prev => ({
+          ...prev,
+          [postId]: {
+            liked: true,
+            likeId: newLike.id
+          }
+        }));
+        
+        console.log(`Successfully liked post ${postId}, like ID: ${newLike.id}`);
         return newLike;
+      } else {
+        console.error("Like API returned error:", response.data);
+        return null;
       }
     } catch (err) {
       console.error("Lỗi khi thích bài viết:", err);
+      
+      // If there's a specific error message from the server, log it
+      if (err.response && err.response.data) {
+        console.error("Server error message:", err.response.data);
+      }
+      
       throw err;
     }
   }, []);
 
   // Handle removing a like
-  const removeLike = useCallback(async (postId) => {
+  const removeLike = useCallback(async (likeId, postId) => {
     const accessToken = localStorage.getItem("access_token");
     
     try {
-      const response = await api.delete(`/posts/${postId}/likes`, {
+      // First check if we have a valid likeId
+      if (!likeId) {
+        console.error("Cannot remove like: No likeId provided");
+        return false;
+      }
+      
+      const response = await api.delete(`/likes/${likeId}`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
@@ -279,8 +432,18 @@ export const UserProvider = ({ children }) => {
       if (response.data && response.data.Status === 200) {
         // Remove the like from userLikes state
         setUserLikes(prevLikes => 
-          prevLikes.filter(like => like.postId !== postId)
+          prevLikes.filter(like => like.id !== likeId)
         );
+        
+        // Update the postLikeMap for persistence
+        setPostLikeMap(prev => {
+          const newMap = {...prev};
+          if (postId && newMap[postId]) {
+            delete newMap[postId];
+          }
+          return newMap;
+        });
+        
         return true;
       }
     } catch (err) {
@@ -510,10 +673,29 @@ export const UserProvider = ({ children }) => {
     }
   }, [userFollowing, fetchUserFollows]);
 
-  // Check if the current user likes a specific post
+  // Enhanced check if the current user likes a specific post
   const isPostLiked = useCallback((postId) => {
+    if (!postId) return false;
+    
+    // First check our persistent mapping
+    if (postLikeMap[postId] && postLikeMap[postId].liked) {
+      return true;
+    }
+    
+    // Fall back to the userLikes array
     return userLikes.some(like => like.postId === postId);
-  }, [userLikes]);
+  }, [userLikes, postLikeMap]);
+
+  // Get the like ID for a specific post
+  const getPostLikeId = useCallback((postId) => {
+    // First check our persistent mapping
+    if (postLikeMap[postId] && postLikeMap[postId].likeId) {
+      return postLikeMap[postId].likeId;
+    }
+    // Fall back to the userLikes array
+    const like = userLikes.find(like => like.postId === postId);
+    return like ? like.id : null;
+  }, [userLikes, postLikeMap]);
 
   // Check if the current user has shared a specific post
   const isPostShared = useCallback((postId) => {
@@ -547,6 +729,7 @@ export const UserProvider = ({ children }) => {
         userSavedPosts,
         userNotifications,
         followedUsers,
+        postLikeMap,
         
         // Loading states
         likesLoading,
@@ -567,6 +750,7 @@ export const UserProvider = ({ children }) => {
         
         // Helper methods
         isPostLiked,
+        getPostLikeId,
         isPostShared,
         isUserFollowed,
         getFollowId,

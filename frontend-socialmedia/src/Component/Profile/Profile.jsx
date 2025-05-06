@@ -11,6 +11,7 @@ import FollowModal from "./FollowModal";
 import { UserContext } from "../Context/UserContext";
 import TripleTCard from "../HomeSection/TripleTCard";
 import Shared from "../Posts/Shared";
+import { formatAvatarUrl } from "../../utils/formatUrl";
 
 const Profile = ({ userData: propUserData, onBack }) => {
   const { id } = useParams();
@@ -39,8 +40,6 @@ const Profile = ({ userData: propUserData, onBack }) => {
   const [openFollowModal, setOpenFollowModal] = useState(false);
   const [followModalTab, setFollowModalTab] = useState('followers');
   const [postsLoading, setPostsLoading] = useState(false);
-  const [hasMorePosts, setHasMorePosts] = useState(true);
-  const [page, setPage] = useState(1);
   const [tabValue, setTabValue] = useState(0);
   const [followLoading, setFollowLoading] = useState(false);
   const [followsData, setFollowsData] = useState([]);
@@ -69,7 +68,6 @@ const Profile = ({ userData: propUserData, onBack }) => {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    setPage(1);
     setUserPosts([]);
     setUserShares([]);
 
@@ -91,7 +89,6 @@ const Profile = ({ userData: propUserData, onBack }) => {
         };
       });
       setUserPosts(currentUserPosts || []);
-      setHasMorePosts((currentUserPosts || []).length >= 10);
       setLoading(false);
       return;
     }
@@ -160,7 +157,6 @@ const Profile = ({ userData: propUserData, onBack }) => {
         // Chỉ cập nhật userPosts nếu đang ở tab Posts
         if (tabValue === 0) {
           setUserPosts(response.data.Data2 || []);
-          setHasMorePosts(response.data.Data2?.length >= 10);
         }
         
         setLoading(false);
@@ -178,7 +174,7 @@ const Profile = ({ userData: propUserData, onBack }) => {
       const accessToken = localStorage.getItem("access_token");
       console.log("Fetching posts for user ID:", userId);
       
-      const endpoint = `http://localhost:8080/api/v1/posts?creatorId=${userId}&page=${page-1}&size=10`;
+      const endpoint = `http://localhost:8080/api/v1/posts?creatorId=${userId}&page=0&size=20`;
 
       const response = await axios.get(endpoint, {
         headers: {
@@ -192,22 +188,17 @@ const Profile = ({ userData: propUserData, onBack }) => {
         if (response.data.Data && Array.isArray(response.data.Data)) {
           const filteredPosts = response.data.Data.filter(post => post.userId === userId);
           setUserPosts(filteredPosts);
-          setHasMorePosts(response.data.Data.length >= 10);
         } else if (response.data.Data && Array.isArray(response.data.Data.posts)) {
           const filteredPosts = response.data.Data.posts.filter(post => post.userId === userId);
           setUserPosts(filteredPosts);
-          setHasMorePosts(response.data.Data.posts.length >= 10);
         } else if (response.data.Data && response.data.Data.content && Array.isArray(response.data.Data.content)) {
           const filteredPosts = response.data.Data.content.filter(post => post.userId === userId);
           setUserPosts(filteredPosts);
-          setHasMorePosts(response.data.Data.content.length >= 10);
         } else {
           setUserPosts([]);
-          setHasMorePosts(false);
         }
       } else {
         setUserPosts([]);
-        setHasMorePosts(false);
       }
     } catch (error) {
       console.error("Lỗi khi tải bài viết:", error);
@@ -222,7 +213,7 @@ const Profile = ({ userData: propUserData, onBack }) => {
     try {
       const accessToken = localStorage.getItem("access_token");
       const response = await axios.get(
-        `http://localhost:8080/api/v1/shares?page=0&size=5`,
+        `http://localhost:8080/api/v1/shares?page=0&size=20`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -265,19 +256,15 @@ const Profile = ({ userData: propUserData, onBack }) => {
           }
           
           setUserShares(sharesWithPostDetails);
-          setHasMorePosts(userShareItems.length >= 5);
         } else {
           setUserShares([]);
-          setHasMorePosts(false);
         }
       } else {
         setUserShares([]);
-        setHasMorePosts(false);
       }
     } catch (error) {
       console.error("Lỗi khi tải shares:", error);
       setUserShares([]);
-      setHasMorePosts(false);
     } finally {
       setPostsLoading(false);
     }
@@ -357,56 +344,10 @@ const Profile = ({ userData: propUserData, onBack }) => {
     }
   };
 
-  const loadMorePosts = async () => {
-    if (!hasMorePosts || postsLoading) return;
-
-    setPostsLoading(true);
-    try {
-      const accessToken = localStorage.getItem("access_token");
-      const nextPage = page + 1;
-      let endpoint;
-      
-      if (tabValue === 0) {
-        endpoint = `http://localhost:8080/api/v1/posts?creatorId=${userId}&page=${nextPage-1}&size=10`;
-        
-        const response = await axios.get(endpoint, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
-
-        if (response.data && response.data.Status === 200) {
-          let newPosts = [];
-          if (response.data.Data && Array.isArray(response.data.Data)) {
-            newPosts = response.data.Data;
-          } else if (response.data.Data && Array.isArray(response.data.Data.posts)) {
-            newPosts = response.data.Data.posts;
-          } else if (response.data.Data && response.data.Data.content && Array.isArray(response.data.Data.content)) {
-            newPosts = response.data.Data.content;
-          }
-          
-          if (newPosts.length > 0) {
-            setUserPosts((prevPosts) => [...prevPosts, ...newPosts]);
-            setPage(nextPage);
-            setHasMorePosts(newPosts.length >= 10);
-          } else {
-            setHasMorePosts(false);
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Lỗi khi tải thêm bài viết:", error);
-    } finally {
-      setPostsLoading(false);
-    }
-  };
-
   const handleTabChange = (event, newValue) => {
     console.log("Tab changed to:", newValue);
     setTabValue(newValue);
-    setPage(1);
     setUserPosts([]);
-    setHasMorePosts(true);
     
     if (newValue === 0) {
       console.log("Fetching posts for tab 0");
@@ -415,22 +356,6 @@ const Profile = ({ userData: propUserData, onBack }) => {
       console.log("Should display Shared component (tab 1)");
     }
   };
-
-  const handleScroll = (e) => {
-    const bottom =
-      Math.ceil(window.innerHeight + window.scrollY) >=
-      document.documentElement.scrollHeight - 100;
-    if (bottom && !postsLoading && hasMorePosts) {
-      loadMorePosts();
-    }
-  };
-
-  useEffect(() => {
-    window.addEventListener("scroll", handleScroll);
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
-  }, [postsLoading, hasMorePosts]);
 
   const handleBack = () => {
     if (onBack) {
@@ -781,12 +706,16 @@ const Profile = ({ userData: propUserData, onBack }) => {
       </div>
 
       <div className="px-4 relative">
+        {console.log("------ AVATAR DEBUG INFO ------")}
+        {console.log("userData object:", userData)}
+        {console.log("Avatar URL from userData:", userData?.avatarUrl)}
+        {console.log("Local avatar from localStorage:", localStorage.getItem('user_avatar'))}
+        {console.log("Is current user profile:", isCurrentUser)}
+        {console.log("Formatted avatar URL:", formatAvatarUrl(userData?.avatarUrl))}
+        {console.log("-----------------------------")}
         <Avatar
           alt={userData?.username || "user"}
-          src={
-            userData?.avatarUrl ||
-            "https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg"
-          }
+          src={isCurrentUser ? formatAvatarUrl(localStorage.getItem('user_avatar') || userData?.avatarUrl) : formatAvatarUrl(userData?.avatarUrl)}
           sx={{
             width: 120,
             height: 120,
@@ -941,12 +870,6 @@ const Profile = ({ userData: propUserData, onBack }) => {
                 <Box className="flex justify-center p-4">
                   <CircularProgress size={24} sx={{ color: "#1d9bf0" }} />
                 </Box>
-              )}
-
-              {!hasMorePosts && userPosts.length > 10 && (
-                <div className="text-center p-4 text-gray-500 border-t border-gray-800">
-                  You've reached the end
-                </div>
               )}
             </div>
           ) : postsLoading ? (

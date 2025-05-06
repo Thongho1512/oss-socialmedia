@@ -303,47 +303,116 @@ const ProfileModal = ({ open, handleClose, userData, onProfileUpdate }) => {
     onSubmit: handlePasswordChange,
   });
   
-  const handleImageChange = (event) => {
+  const handleImageChange = async (event) => {
     setUploading(true);
     const { name } = event.target;
     const file = event.target.files[0];
     
     if (file) {
-      // Convert the file to Base64 string
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result;
-        
+      try {
         // Store in formik state for current session
         formik.setFieldValue(name, file);
         
-        // Save to localStorage for persistence
         if (name === 'image') {
-          localStorage.setItem('user_avatar', base64String);
-          // Update context or state to reflect avatar change immediately
-          if (onProfileUpdate) {
-            const updatedData = {
-              ...userData,
-              avatarUrl: base64String
-            };
-            onProfileUpdate(updatedData);
+          // Upload the file to the server
+          const accessToken = localStorage.getItem("access_token");
+          if (!accessToken) {
+            throw new Error("Authentication token not found. Please log in again.");
+          }
+          
+          // Create a FormData object to send the file
+          const formData = new FormData();
+          formData.append('avatarFile', file);
+          
+          try {
+            const response = await axios.patch(
+              "http://localhost:8080/api/v1/users/avatar",
+              formData,
+              {
+                headers: {
+                  "Content-Type": "multipart/form-data",
+                  "Authorization": `Bearer ${accessToken}`
+                },
+              }
+            );
+            
+            console.log("Avatar upload response:", response.data);
+            
+            if (response.data && response.data.Status === 200) {
+              setNotification({
+                open: true,
+                message: "Avatar updated successfully!",
+                severity: "success"
+              });
+              
+              // Get the updated user data to ensure we have the server-side avatar URL
+              const userResponse = await axios.get(
+                `http://localhost:8080/api/v1/users/${userData.id}`,
+                {
+                  headers: {
+                    "Authorization": `Bearer ${accessToken}`
+                  },
+                }
+              );
+              
+              if (userResponse.data && userResponse.data.Status === 200) {
+                const serverAvatarUrl = userResponse.data.Data1.avatarUrl;
+                
+                // For local display only
+                if (serverAvatarUrl) {
+                  // Store server avatar URL in localStorage for consistent display
+                  localStorage.setItem('user_avatar', serverAvatarUrl);
+                  
+                  // Update context or state with the server-side avatar URL
+                  if (onProfileUpdate) {
+                    const updatedData = {
+                      ...userData,
+                      avatarUrl: serverAvatarUrl
+                    };
+                    onProfileUpdate(updatedData);
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            console.error("Error uploading avatar:", error);
+            setNotification({
+              open: true,
+              message: error.response?.data?.Message || "Failed to upload avatar. Please try again.",
+              severity: "error"
+            });
           }
         } else if (name === 'backgroundImage') {
-          localStorage.setItem('user_cover', base64String);
-          // Update context or state to reflect cover change immediately
-          if (onProfileUpdate) {
-            const updatedData = {
-              ...userData,
-              coverUrl: base64String
-            };
-            onProfileUpdate(updatedData);
-          }
+          // For cover images, keep using localStorage for now
+          // Convert the file to Base64 string for preview and localStorage
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64String = reader.result;
+            localStorage.setItem('user_cover', base64String);
+            // Update context or state to reflect cover change immediately
+            if (onProfileUpdate) {
+              const updatedData = {
+                ...userData,
+                coverUrl: base64String
+              };
+              onProfileUpdate(updatedData);
+            }
+          };
+          reader.readAsDataURL(file);
         }
-      };
-      reader.readAsDataURL(file);
+      } catch (error) {
+        console.error("Error processing image:", error);
+        setNotification({
+          open: true,
+          message: "Failed to process image. Please try again.",
+          severity: "error"
+        });
+      } finally {
+        setUploading(false);
+      }
+    } else {
+      setUploading(false);
     }
-    
-    setUploading(false);
   };
 
   const handleCloseNotification = (event, reason) => {
@@ -557,13 +626,13 @@ const ProfileModal = ({ open, handleClose, userData, onProfileUpdate }) => {
                     }
                   },
                   '& .MuiInputLabel-root': {
-                    color: 'gray'
+                    color: '#9e9e9e' // Lighter gray for better visibility
                   },
                   '& .MuiInputLabel-root.Mui-focused': {
-                    color: '#1d9bf0'
+                    color: '#1d9bf0' // Twitter blue when focused
                   },
                   '& .MuiSelect-icon': {
-                    color: 'gray'
+                    color: '#1d9bf0' // Twitter blue for dropdown icon
                   },
                   '& .MuiFormHelperText-root': {
                     color: 'rgb(244, 67, 54)'
@@ -578,10 +647,33 @@ const ProfileModal = ({ open, handleClose, userData, onProfileUpdate }) => {
                   value={formik.values.gender}
                   onChange={formik.handleChange}
                   label="Gender"
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        bgcolor: '#121212', // Dark background for dropdown
+                        border: '1px solid #333',
+                      }
+                    }
+                  }}
                 >
-                  <MenuItem value="MALE" sx={{ color: 'white', backgroundColor: '#000', '&:hover': { backgroundColor: '#222' } }}>Male</MenuItem>
-                  <MenuItem value="FEMALE" sx={{ color: 'white', backgroundColor: '#000', '&:hover': { backgroundColor: '#222' } }}>Female</MenuItem>
-                  <MenuItem value="OTHER" sx={{ color: 'white', backgroundColor: '#000', '&:hover': { backgroundColor: '#222' } }}>Other</MenuItem>
+                  <MenuItem value="MALE" sx={{ 
+                    color: '#ffffff', 
+                    backgroundColor: '#121212', 
+                    '&:hover': { backgroundColor: '#1d9bf0', color: '#ffffff' },
+                    '&.Mui-selected': { backgroundColor: '#0d8bd0', color: '#ffffff' }
+                  }}>Male</MenuItem>
+                  <MenuItem value="FEMALE" sx={{ 
+                    color: '#ffffff', 
+                    backgroundColor: '#121212', 
+                    '&:hover': { backgroundColor: '#1d9bf0', color: '#ffffff' },
+                    '&.Mui-selected': { backgroundColor: '#0d8bd0', color: '#ffffff' }
+                  }}>Female</MenuItem>
+                  <MenuItem value="OTHER" sx={{ 
+                    color: '#ffffff', 
+                    backgroundColor: '#121212', 
+                    '&:hover': { backgroundColor: '#1d9bf0', color: '#ffffff' },
+                    '&.Mui-selected': { backgroundColor: '#0d8bd0', color: '#ffffff' }
+                  }}>Other</MenuItem>
                 </Select>
                 {formik.touched.gender && formik.errors.gender && (
                   <FormHelperText>{formik.errors.gender}</FormHelperText>

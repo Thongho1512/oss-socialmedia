@@ -8,6 +8,7 @@ import HomeIcon from "@mui/icons-material/Home";
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import SettingsIcon from "@mui/icons-material/Settings";
+import { formatAvatarUrl } from "../../utils/formatUrl";
 
 const Navigation = ({ collapsed = false }) => {
   const [anchorEl, setAnchorEl] = useState(null);
@@ -22,9 +23,9 @@ const Navigation = ({ collapsed = false }) => {
   useEffect(() => {
     const localAvatar = localStorage.getItem('user_avatar');
     if (localAvatar) {
-      setAvatarUrl(localAvatar);
+      setAvatarUrl(formatAvatarUrl(localAvatar));
     } else if (userData?.avatarUrl) {
-      setAvatarUrl(userData.avatarUrl);
+      setAvatarUrl(formatAvatarUrl(userData.avatarUrl));
     } else {
       setAvatarUrl("https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg");
     }

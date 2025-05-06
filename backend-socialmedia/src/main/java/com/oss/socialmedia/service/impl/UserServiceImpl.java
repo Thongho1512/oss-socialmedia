@@ -1,10 +1,15 @@
 package com.oss.socialmedia.service.impl;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -12,6 +17,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.oss.socialmedia.common.SecurityUtil;
 import com.oss.socialmedia.common.Status;
@@ -34,9 +40,11 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j(topic = "USER-SERVICE")
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
-    // @NonNull
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+
+    @Value("${file.upload.image-dir}")
+    private String imageUploadDir; // Directory for image uploads
 
     @Override
     public UserPageDTO findAll(String keyword, String sort, int page, int size) {
@@ -245,11 +253,79 @@ public class UserServiceImpl implements UserService {
     public void updateAvatarUrl(ReqAvatarUrl avatarUrl) {
         String email = getEmailOfUserIsRequiring();
         UserEntity user = findByEmail(email);
-        user.setBio(avatarUrl.getAvatarUrl());
-        userRepository.save(user);
+        
+        try {
+            if (avatarUrl.getAvatarFile() != null && !avatarUrl.getAvatarFile().isEmpty()) {
+                // If a file was uploaded directly
+                String fileUrl = saveAvatarFile(avatarUrl.getAvatarFile());
+                user.setAvatar_url(fileUrl);
+                userRepository.save(user);
+                log.info("Avatar saved as file: {}", fileUrl);
+            } else if (avatarUrl.getAvatarUrl() != null && !avatarUrl.getAvatarUrl().isEmpty()) {
+                String avatarUrlString = avatarUrl.getAvatarUrl();
+                
+                // Check if it's a base64 string
+                if (avatarUrlString.startsWith("data:image")) {
+                    // Extract data from base64 string
+                    String[] parts = avatarUrlString.split(",");
+                    String imageType = parts[0].split(";")[0].split("/")[1];
+                    byte[] imageBytes = java.util.Base64.getDecoder().decode(parts[1]);
+                    
+                    // Create file from base64 data
+                    String fileName = System.currentTimeMillis() + "_images." + imageType;
+                    Path uploadPath = Paths.get(System.getProperty("user.dir"), imageUploadDir);
+                    
+                    // Ensure directory exists
+                    if (!Files.exists(uploadPath)) {
+                        Files.createDirectories(uploadPath);
+                    }
+                    
+                    Path filePath = uploadPath.resolve(fileName);
+                    Files.write(filePath, imageBytes);
+                    
+                    // Save the path to database
+                    String fileUrl = imageUploadDir + "/" + fileName;
+                    user.setAvatar_url(fileUrl);
+                    userRepository.save(user);
+                    log.info("Avatar saved from base64: {}", fileUrl);
+                } else {
+                    // If it's already a valid path, use it directly
+                    user.setAvatar_url(avatarUrlString);
+                    userRepository.save(user);
+                    log.info("Avatar URL saved directly: {}", avatarUrlString);
+                }
+            }
+        } catch (IOException e) {
+            log.error("Error saving avatar file", e);
+            throw new RuntimeException("Error when saving avatar file", e);
+        }
     }
+    
+    // Method to save avatar file
+    private String saveAvatarFile(MultipartFile file) throws IOException {
+        // Check file type
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image")) {
+            throw new IllegalArgumentException("Only image files are supported for avatars.");
+        }
+        
+        Path uploadPath = Paths.get(System.getProperty("user.dir"), imageUploadDir);
 
+        // Ensure directory exists
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+        }
+        
+        // Create a unique file name
+        String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+        Path filePath = uploadPath.resolve(fileName);
 
+        // Save the file
+        Files.copy(file.getInputStream(), filePath);
+
+        // Return the relative path to be stored in database
+        return imageUploadDir + "/" + fileName;
+    }
 
     @Override
     public void updateFollowingCount(String req) {

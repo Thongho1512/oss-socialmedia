@@ -12,13 +12,15 @@ const Likes = ({ userId }) => {
   const [postsCache, setPostsCache] = useState({});
   const [usersCache, setUsersCache] = useState({});
   const [requestFailed, setRequestFailed] = useState(false);
-  
+  const [displayedUsers, setDisplayedUsers] = useState(new Set());
+
   useEffect(() => {
     console.log("Likes component mounted with userId:", userId);
     setPage(0);
     setUserLikes([]);
     setHasMoreLikes(true);
     setRequestFailed(false);
+    setDisplayedUsers(new Set());
     fetchUserLikes();
   }, [userId]);
 
@@ -28,7 +30,7 @@ const Likes = ({ userId }) => {
     try {
       const currentUserId = localStorage.getItem("user_id");
       console.log("Current user ID from localStorage:", currentUserId);
-      
+
       const targetUserId = userId || currentUserId;
       console.log("Target userId for filtering:", targetUserId);
 
@@ -50,23 +52,46 @@ const Likes = ({ userId }) => {
       );
 
       console.log("Likes API response:", response.data);
-      
+
       if (response.data && response.data.Status === 200) {
         if (response.data.Data && response.data.Data.likes) {
-          const userLikeItems = response.data.Data.likes.filter(like => 
+          const userLikeItems = response.data.Data.likes.filter(like =>
             String(like.userId) === String(targetUserId)
           );
-          
-          console.log("Filtered likes for target user:", userLikeItems);
-          
-          if (userLikeItems.length > 0) {
-            const likedPosts = await fetchPostDetailsSequentially(userLikeItems, accessToken);
-            
-            setUserLikes(prevLikes => 
-              page === 0 ? likedPosts : [...prevLikes, ...likedPosts].filter(p => p !== null)
-            );
-            
-            setHasMoreLikes(userLikeItems.length === 10);
+
+          const uniqueLikesByUser = [];
+          const seenUserIds = new Set();
+
+          for (const like of userLikeItems) {
+            if (!like.likedByUserId) continue;
+
+            if (!seenUserIds.has(like.likedByUserId)) {
+              seenUserIds.add(like.likedByUserId);
+              uniqueLikesByUser.push(like);
+            }
+          }
+
+          console.log("Filtered unique likes for target user:", uniqueLikesByUser);
+
+          if (uniqueLikesByUser.length > 0) {
+            const likedPosts = await fetchPostDetailsSequentially(uniqueLikesByUser, accessToken);
+
+            setUserLikes(prevLikes => {
+              const newLikes = page === 0 ? [] : [...prevLikes];
+              const currentDisplayedUsers = new Set(displayedUsers);
+
+              for (const post of likedPosts) {
+                if (post && post.user && post.user.id && !currentDisplayedUsers.has(post.user.id)) {
+                  currentDisplayedUsers.add(post.user.id);
+                  newLikes.push(post);
+                }
+              }
+
+              setDisplayedUsers(currentDisplayedUsers);
+              return newLikes;
+            });
+
+            setHasMoreLikes(uniqueLikesByUser.length === 10);
           } else {
             if (page === 0) {
               setUserLikes([]);
@@ -100,7 +125,7 @@ const Likes = ({ userId }) => {
     const likedPostsWithDetails = [];
     const newCache = { ...postsCache };
     const newUsersCache = { ...usersCache };
-    
+
     for (const like of likes) {
       try {
         if (newCache[like.postId]) {
@@ -114,9 +139,9 @@ const Likes = ({ userId }) => {
           likedPostsWithDetails.push(postWithLikeInfo);
           continue;
         }
-        
+
         console.log(`Fetching details for post: ${like.postId}`);
-        
+
         try {
           const postResponse = await axios.get(
             `http://localhost:8080/api/v1/posts/${like.postId}`,
@@ -126,21 +151,21 @@ const Likes = ({ userId }) => {
               }
             }
           );
-          
+
           if (postResponse.data && postResponse.data.Status === 200) {
             let postData = postResponse.data.Data;
-            
+
             if (Array.isArray(postResponse.data.Data)) {
               postData = postResponse.data.Data.find(p => p.id === like.postId) || postResponse.data.Data[0];
             }
-            
+
             if (!postData) {
               console.error(`No post data found for ID: ${like.postId}`);
               continue;
             }
-            
+
             newCache[like.postId] = postData;
-            
+
             if (postData.userId && !newUsersCache[postData.userId]) {
               try {
                 const userResponse = await axios.get(
@@ -151,7 +176,7 @@ const Likes = ({ userId }) => {
                     }
                   }
                 );
-                
+
                 if (userResponse.data && userResponse.data.Status === 200) {
                   newUsersCache[postData.userId] = userResponse.data.Data1;
                 }
@@ -159,7 +184,7 @@ const Likes = ({ userId }) => {
                 console.error(`Error fetching user ${postData.userId}:`, userError);
               }
             }
-            
+
             const userData = newUsersCache[postData.userId];
             const postWithUserData = {
               ...postData,
@@ -173,7 +198,7 @@ const Likes = ({ userId }) => {
                 lastName: postData.lastName || "User"
               }
             };
-            
+
             likedPostsWithDetails.push(postWithUserData);
           } else {
             console.error(`Failed to fetch post ${like.postId}:`, postResponse.data);
@@ -185,11 +210,11 @@ const Likes = ({ userId }) => {
         console.error(`Error processing like for post ${like.postId}:`, error);
       }
     }
-    
+
     setPostsCache(newCache);
     setUsersCache(newUsersCache);
-    
-    return likedPostsWithDetails.sort((a, b) => 
+
+    return likedPostsWithDetails.sort((a, b) =>
       new Date(b.likedAt || b.createdAt) - new Date(a.likedAt || a.createdAt)
     );
   };
@@ -222,7 +247,7 @@ const Likes = ({ userId }) => {
       likesCount: post.likeCount || post.likesCount || 1,
       commentsCount: post.commentCount || post.commentsCount || 0,
       repostsCount: post.shareCount || post.repostsCount || 0,
-      mediaUrls: post.media 
+      mediaUrls: post.media
         ? post.media.map(m => m.url?.startsWith('http') ? m.url : `http://localhost:8080/${m.url || ''}`)
         : post.mediaUrls || []
     };
@@ -235,13 +260,29 @@ const Likes = ({ userId }) => {
     fetchUserLikes();
   };
 
+  const getUniqueUsers = (posts) => {
+    const uniqueUsers = {};
+    const uniquePosts = [];
+
+    posts.forEach(post => {
+      if (post && post.user && post.user.id) {
+        if (!uniqueUsers[post.user.id]) {
+          uniqueUsers[post.user.id] = true;
+          uniquePosts.push(post);
+        }
+      }
+    });
+
+    return uniquePosts;
+  };
+
   if (error) {
     return (
       <Box p={3} className="text-center">
         <Typography color="error">Error loading likes: {error}</Typography>
-        <Button 
+        <Button
           onClick={handleRetry}
-          variant="contained" 
+          variant="contained"
           sx={{ mt: 2, bgcolor: '#1d9bf0' }}
         >
           Retry
@@ -254,9 +295,9 @@ const Likes = ({ userId }) => {
     return (
       <Box p={3} className="text-center">
         <Typography>Failed to load liked posts. Please try again.</Typography>
-        <Button 
+        <Button
           onClick={handleRetry}
-          variant="contained" 
+          variant="contained"
           sx={{ mt: 2, bgcolor: '#1d9bf0' }}
         >
           Retry
@@ -269,7 +310,7 @@ const Likes = ({ userId }) => {
     <div>
       {userLikes.length > 0 ? (
         <div>
-          {userLikes.map((post, index) => (
+          {getUniqueUsers(userLikes).map((post, index) => (
             <React.Fragment key={`like-${post.id}-${index}`}>
               <TripleTCard post={preparePostForTripleTCard(post)} profileUserId={userId} />
             </React.Fragment>
@@ -280,11 +321,11 @@ const Likes = ({ userId }) => {
               <CircularProgress size={24} sx={{ color: "#1d9bf0" }} />
             </Box>
           )}
-          
+
           {!loading && hasMoreLikes && (
             <Box className="flex justify-center p-4">
-              <Button 
-                variant="outlined" 
+              <Button
+                variant="outlined"
                 onClick={loadMoreLikes}
                 sx={{ color: '#1d9bf0', borderColor: '#1d9bf0' }}
               >
@@ -292,7 +333,7 @@ const Likes = ({ userId }) => {
               </Button>
             </Box>
           )}
-          
+
           {!hasMoreLikes && userLikes.length > 5 && (
             <Box className="flex justify-center p-4 text-gray-500">
               No more likes to show

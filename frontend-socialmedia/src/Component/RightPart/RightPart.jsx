@@ -5,6 +5,7 @@ import { Box, Typography, Avatar, CircularProgress } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import Messages from "../Messages/Messages";
+import { formatAvatarUrl } from "../../utils/formatUrl";
 
 const RightPart = ({ onUserSelect }) => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -130,7 +131,7 @@ const RightPart = ({ onUserSelect }) => {
             >
               <Avatar
                 alt={user.username}
-                src={user.avatarUrl || "https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg"}
+                src={formatAvatarUrl(user.avatarUrl)}
                 sx={{ width: 48, height: 48, mr: 2 }}
               />
               <div>

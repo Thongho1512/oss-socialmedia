@@ -17,6 +17,7 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import axios from "axios";
+import { formatAvatarUrl } from "../../utils/formatUrl";
 
 const UsersList = ({ visible, onClose, onSelectUser }) => {
   const [users, setUsers] = useState([]);
@@ -169,7 +170,7 @@ const UsersList = ({ visible, onClose, onSelectUser }) => {
                   <ListItemAvatar>
                     <Avatar 
                       alt={user.username} 
-                      src={user.avatarUrl || "https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg"}
+                      src={formatAvatarUrl(user.avatarUrl)}
                       sx={{ width: 32, height: 32 }}
                     />
                   </ListItemAvatar>

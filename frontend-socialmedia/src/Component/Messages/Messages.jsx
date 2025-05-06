@@ -13,6 +13,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
 import axios from "axios";
+import { formatAvatarUrl } from "../../utils/formatUrl";
 
 const Messages = ({ onClose }) => {
   const [users, setUsers] = useState([]);
@@ -390,7 +391,7 @@ const Messages = ({ onClose }) => {
                         className="flex items-center p-2 hover:bg-gray-900 cursor-pointer border-b border-gray-800"
                       >
                         <Avatar 
-                          src={user.avatarUrl || "https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg"} 
+                          src={formatAvatarUrl(user.avatarUrl)} 
                           sx={{ width: 32, height: 32 }}
                           className="mr-2"
                         />
@@ -443,7 +444,7 @@ const Messages = ({ onClose }) => {
                       className={`flex items-center p-2 cursor-pointer hover:bg-gray-900 ${selectedUser?.id === user.id ? 'bg-gray-900' : ''}`}
                     >
                       <Avatar 
-                        src={user.avatarUrl || "https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg"} 
+                        src={formatAvatarUrl(user.avatarUrl)} 
                         sx={{ width: 32, height: 32 }}
                         className="mr-2"
                       />
