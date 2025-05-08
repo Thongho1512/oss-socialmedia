@@ -19,8 +19,10 @@ const HomeSection = () => {
   const { isPostLiked, getPostLikeId, fetchUserLikes } = useContext(UserContext);
 
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState("");
+  const [selectedImages, setSelectedImages] = useState([]);
+  const [previewUrls, setPreviewUrls] = useState([]);
+  const [selectedVideos, setSelectedVideos] = useState([]);
+  const [videoPreviewUrls, setVideoPreviewUrls] = useState([]);
   const [posting, setPosting] = useState(false);
   const [allPosts, setAllPosts] = useState([]);
   const [myPosts, setMyPosts] = useState([]);
@@ -106,15 +108,12 @@ const HomeSection = () => {
     console.log("Processing post data, raw posts:", posts);
 
     return posts.map((post) => {
-      // Use consistent post ID, don't mix IDs
       const postId = post.id || post.postId;
       const isLiked = postId ? isPostLiked(postId) : false;
       const likeId = postId ? getPostLikeId(postId) : null;
       
-      // Keep user data consistent within the same post
       const userId = post.userId || (post.user && post.user.id);
       
-      // Don't mix user data between posts
       const user = {
         ...(post.user || {}),
         id: userId,
@@ -125,14 +124,13 @@ const HomeSection = () => {
                   "https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg",
       };
 
-      // Ensure we're not mixing content between posts
       return {
         ...post,
         id: postId,
         content: post.content || post.caption || "",
         user: user,
         userId: userId,
-        mediaUrls: post.mediaUrls || [], // Don't create fake media URLs
+        mediaUrls: post.mediaUrls || [],
         likeCount: post.likeCount || 0,
         commentCount: post.commentCount || 0,
         shareCount: post.shareCount || 0,
@@ -159,7 +157,6 @@ const HomeSection = () => {
 
       await fetchUserLikes();
 
-      // Only fetch from the posts endpoint for the "TẤT CẢ BÀI VIẾT" tab (not homepage)
       const allPostsResponse = await axios.get(
         `http://localhost:8080/api/v1/posts?page=${pageNum}&size=10`,
         {
@@ -171,7 +168,6 @@ const HomeSection = () => {
 
       console.log("All Posts API Response:", allPostsResponse.data);
       
-      // If we need the followed users posts for the other tab, fetch them only when needed
       if (activeTab === 1 || pageNum === 0) {
         const homepageResponse = await axios.get(
           "http://localhost:8080/api/v1/homepage",
@@ -227,7 +223,6 @@ const HomeSection = () => {
 
         const rawAllPosts = processPostData(allPostsData);
 
-        // Create a Map instead of a Set to ensure we have truly unique posts by ID
         const uniquePostsMap = new Map();
         rawAllPosts.forEach(post => {
           const postId = post.id || post.postId;
@@ -236,13 +231,11 @@ const HomeSection = () => {
           }
         });
         
-        // Convert Map back to array
         const processedAllPosts = Array.from(uniquePostsMap.values());
 
         if (pageNum === 0) {
           setAllPosts(processedAllPosts);
         } else {
-          // For pagination, ensure we don't add duplicates when loading more
           setAllPosts(prevPosts => {
             const existingIds = new Set(prevPosts.map(p => p.id || p.postId));
             const newPosts = processedAllPosts.filter(p => !existingIds.has(p.id || p.postId));
@@ -289,12 +282,16 @@ const HomeSection = () => {
     fetchAllPosts(nextPage);
   };
 
-  const handleSelectImage = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      setSelectedImage(file);
-      setPreviewUrl(URL.createObjectURL(file));
-    }
+  const handleSelectMedia = (event) => {
+    const files = Array.from(event.target.files);
+    const imageFiles = files.filter((file) => file.type.startsWith("image"));
+    const videoFiles = files.filter((file) => file.type.startsWith("video"));
+
+    setSelectedImages((prev) => [...prev, ...imageFiles]);
+    setPreviewUrls((prev) => [...prev, ...imageFiles.map((file) => URL.createObjectURL(file))]);
+
+    setSelectedVideos((prev) => [...prev, ...videoFiles]);
+    setVideoPreviewUrls((prev) => [...prev, ...videoFiles.map((file) => URL.createObjectURL(file))]);
   };
 
   const handleSubmit = async (values, { resetForm }) => {
@@ -306,9 +303,9 @@ const HomeSection = () => {
       formData.append("userId", userId);
       formData.append("caption", values.content);
       formData.append("privacy", true);
-      if (selectedImage) {
-        formData.append("media", selectedImage);
-      }
+      selectedImages.forEach((image) => formData.append("media", image));
+      selectedVideos.forEach((video) => formData.append("media", video));
+
       const response = await axios.post(
         "http://localhost:8080/api/v1/posts",
         formData,
@@ -318,19 +315,17 @@ const HomeSection = () => {
           },
         }
       );
-      console.log("API response:", response.data);
+
       if (response.data && response.data.Status === 200) {
-        alert("Đăng bài thành công!");
-        resetForm();
-        setSelectedImage(null);
-        setPreviewUrl("");
         refreshPosts();
-      } else {
-        alert("Đăng bài thất bại!");
+        resetForm();
+        setSelectedImages([]);
+        setPreviewUrls([]);
+        setSelectedVideos([]);
+        setVideoPreviewUrls([]);
       }
     } catch (error) {
-      alert("Đăng bài thất bại!");
-      console.error(error);
+      console.error("Error creating post:", error);
     } finally {
       setPosting(false);
     }
@@ -386,28 +381,66 @@ const HomeSection = () => {
                 {formik.errors.content && formik.touched.content && (
                   <span className="text-red-500">{formik.errors.content}</span>
                 )}
-                {previewUrl && (
-                  <div className="mt-2">
-                    <img
-                      src={previewUrl}
-                      alt="preview"
-                      className="max-h-60 rounded-lg"
+                <div className="flex items-center space-x-4">
+                  <label className="cursor-pointer">
+                    <ImageIcon className="text-blue-500" />
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*,video/*"
+                      className="hidden"
+                      onChange={handleSelectMedia}
                     />
+                  </label>
+                </div>
+                {previewUrls.length > 0 && (
+                  <div className="flex flex-wrap mt-4">
+                    {previewUrls.map((url, index) => (
+                      <div key={index} className="relative w-24 h-24 mr-2 mb-2">
+                        <img
+                          src={url}
+                          alt={`Preview ${index}`}
+                          className="w-full h-full object-cover rounded-md"
+                        />
+                        <button
+                          type="button"
+                          className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1"
+                          onClick={() => {
+                            setSelectedImages((prev) => prev.filter((_, i) => i !== index));
+                            setPreviewUrls((prev) => prev.filter((_, i) => i !== index));
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {videoPreviewUrls.length > 0 && (
+                  <div className="flex flex-wrap mt-4">
+                    {videoPreviewUrls.map((url, index) => (
+                      <div key={index} className="relative w-24 h-24 mr-2 mb-2">
+                        <video
+                          src={url}
+                          controls
+                          className="w-full h-full object-cover rounded-md"
+                        />
+                        <button
+                          type="button"
+                          className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1"
+                          onClick={() => {
+                            setSelectedVideos((prev) => prev.filter((_, i) => i !== index));
+                            setVideoPreviewUrls((prev) => prev.filter((_, i) => i !== index));
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
                 <div className="flex justify-between items-center mt-5">
                   <div className="flex space-x-5 items-center">
-                    <label className="flex item-center space-x-2 rounded-md cursor-pointer">
-                      <ImageIcon className="text-[#1d9bf0]" />
-                      <input
-                        type="file"
-                        name="imageFile"
-                        className="hidden"
-                        accept="image/*"
-                        onChange={handleSelectImage}
-                        disabled={posting}
-                      />
-                    </label>
                     <FmdGoodIcon className="text-[#1d9bf0]" />
                     <TagFacesIcon className="text-[#1d9bf0]" />
                     <div>

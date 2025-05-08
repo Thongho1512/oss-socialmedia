@@ -27,6 +27,8 @@ import EditIcon from "@mui/icons-material/Edit";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import ImageIcon from "@mui/icons-material/Image";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
+import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
+import VideocamIcon from "@mui/icons-material/Videocam";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Comments from "../Posts/Comments";
@@ -69,6 +71,9 @@ const TripleTCard = ({ post, profileUserId }) => {
   const [submittingEdit, setSubmittingEdit] = useState(false);
   const [existingMedia, setExistingMedia] = useState([]);
   const [removedMedia, setRemovedMedia] = useState([]);
+
+  // Create video refs at the top level
+  const videoRefs = React.useRef({});
 
   const isMenuOpen = Boolean(menuAnchorEl);
   
@@ -234,6 +239,14 @@ const TripleTCard = ({ post, profileUserId }) => {
   };
 
   const handleSelectEditImage = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setSelectedEditImage(file);
+      setEditPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const handleSelectEditMedia = (event) => {
     const file = event.target.files[0];
     if (file) {
       setSelectedEditImage(file);
@@ -720,27 +733,228 @@ const TripleTCard = ({ post, profileUserId }) => {
   const hasMedia = post?.mediaUrl || (post?.media && post.media.length > 0) || (post?.mediaUrls && post.mediaUrls.length > 0) || (post?.images && post.images.length > 0);
   
   const getMediaArray = () => {
-    if (post?.mediaUrl) return [post.mediaUrl];
-    if (post?.media && Array.isArray(post.media)) {
-      return post.media.map(m => m.url ? (m.url.startsWith('http') ? m.url : `http://localhost:8080/${m.url}`) : m).filter(Boolean);
+    const videoExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv', '.flv'];
+    
+    const isVideoUrl = (url) => {
+      if (!url || typeof url !== 'string') return false;
+      return videoExtensions.some(ext => url.toLowerCase().endsWith(ext));
+    };
+    
+    if (post?.mediaUrl) {
+      return [{ 
+        url: post.mediaUrl, 
+        type: isVideoUrl(post.mediaUrl) ? "video" : "image" 
+      }];
     }
-    if (post?.mediaUrls && Array.isArray(post.mediaUrls)) return post.mediaUrls;
-    if (post?.images && Array.isArray(post.images)) return post.images;
+    
+    if (post?.media && Array.isArray(post.media)) {
+      return post.media
+        .map((m) => {
+          if (!m) return null;
+          
+          // Xử lý nếu m là string
+          if (typeof m === 'string') {
+            const url = m.startsWith("http") ? m : `http://localhost:8080/${m}`;
+            const type = isVideoUrl(m) ? "video" : "image";
+            return { url, type };
+          }
+          
+          // Xử lý nếu m là object
+          const url = m.url 
+            ? (m.url.startsWith("http") ? m.url : `http://localhost:8080/${m.url}`) 
+            : null;
+            
+          if (!url) return null;
+          
+          // Xác định type từ thông tin có sẵn hoặc từ đuôi file
+          const type = m.type 
+            ? m.type.toLowerCase() 
+            : (isVideoUrl(url) ? "video" : "image");
+            
+          console.log(`Media item processed: ${url}, type: ${type}`);
+          
+          return { url, type };
+        })
+        .filter(Boolean);
+    }
+    
+    if (post?.mediaUrls && Array.isArray(post.mediaUrls)) {
+      return post.mediaUrls.map((url) => ({ 
+        url, 
+        type: isVideoUrl(url) ? "video" : "image" 
+      }));
+    }
+    
+    if (post?.images && Array.isArray(post.images)) {
+      return post.images.map((url) => ({ url, type: "image" }));
+    }
+    
     return [];
   };
 
   const mediaArray = getMediaArray();
-  
+
   const handleImageError = (e) => {
     console.error("Lỗi tải hình ảnh: Không thể hiển thị hình ảnh");
-    
+
     try {
       e.target.onerror = null; 
-      e.target.src = 'https://via.placeholder.com/400x300?text=Image+Not+Available';
-      e.target.classList.add('image-error');
+      // Use process.env.PUBLIC_URL to get the correct path to public assets
+      const fallbackImageUrl = `${process.env.PUBLIC_URL || ""}/logo192.png`;
+      e.target.src = fallbackImageUrl;
+      e.target.classList.add("image-error");
     } catch (error) {
       console.error("Lỗi khi xử lý ảnh bị lỗi:", error.message);
     }
+  };
+
+  const renderMedia = () => {
+    // If there's no media, return nothing
+    if (!mediaArray || mediaArray.length === 0) return null;
+    
+    // If there's only one media item, display it full width
+    if (mediaArray.length === 1) {
+      const media = mediaArray[0];
+      if (media.type === "video") {
+        return (
+          <div className="relative w-full h-auto mb-3">
+            <div className="relative group rounded-md overflow-hidden" onClick={e => e.stopPropagation()}>
+              <video
+                ref={el => videoRefs.current[`video-0`] = el}
+                src={media.url}
+                controls
+                controlsList="nodownload"
+                className="w-full h-auto max-h-[500px] object-contain rounded-md"
+                poster={`${process.env.PUBLIC_URL || ""}/logo.png`}
+              />
+              <div className="absolute top-2 right-2 bg-black bg-opacity-60 rounded-full p-1">
+                <VideocamIcon className="text-white" fontSize="small" />
+              </div>
+            </div>
+          </div>
+        );
+      } else {
+        return (
+          <div className="relative w-full h-auto mb-3">
+            <img
+              src={media.url}
+              alt="Media"
+              className="w-full h-auto max-h-[500px] object-contain rounded-md"
+              onError={handleImageError}
+            />
+          </div>
+        );
+      }
+    }
+    
+    // For multiple media items, use a grid layout
+    return (
+      <div className="grid gap-1 mb-3 rounded-md overflow-hidden" 
+           style={{ 
+             display: 'grid',
+             gridTemplateColumns: mediaArray.length === 2 ? '1fr 1fr' : '1fr 0.8fr',
+             gridTemplateRows: mediaArray.length <= 3 ? '1fr' : '1fr 1fr',
+           }}>
+        {/* First image (always larger) */}
+        {mediaArray.length > 0 && (
+          <div className={`rounded-md overflow-hidden ${mediaArray.length > 2 ? 'row-span-2' : ''}`} style={{ height: '100%' }}>
+            {mediaArray[0].type === "video" ? (
+              <div className="relative h-full" onClick={e => e.stopPropagation()}>
+                <video
+                  ref={el => videoRefs.current[`video-0`] = el}
+                  src={mediaArray[0].url}
+                  controls
+                  controlsList="nodownload" 
+                  className="w-full h-full object-cover"
+                  poster={`${process.env.PUBLIC_URL || ""}/logo.png`}
+                />
+                <div className="absolute top-2 right-2 bg-black bg-opacity-60 rounded-full p-1">
+                  <VideocamIcon className="text-white" fontSize="small" />
+                </div>
+              </div>
+            ) : (
+              <img
+                src={mediaArray[0].url}
+                alt="Media 1"
+                className="w-full h-full object-cover"
+                onError={handleImageError}
+              />
+            )}
+          </div>
+        )}
+        
+        {/* Second image */}
+        {mediaArray.length > 1 && (
+          <div className="rounded-md overflow-hidden" style={{ height: mediaArray.length <= 2 ? '100%' : '200px' }}>
+            {mediaArray[1].type === "video" ? (
+              <div className="relative h-full" onClick={e => e.stopPropagation()}>
+                <video
+                  ref={el => videoRefs.current[`video-1`] = el}
+                  src={mediaArray[1].url}
+                  controls
+                  controlsList="nodownload"
+                  className="w-full h-full object-cover"
+                  poster={`${process.env.PUBLIC_URL || ""}/logo.png`}
+                />
+                <div className="absolute top-2 right-2 bg-black bg-opacity-60 rounded-full p-1">
+                  <VideocamIcon className="text-white" fontSize="small" />
+                </div>
+              </div>
+            ) : (
+              <img
+                src={mediaArray[1].url}
+                alt="Media 2"
+                className="w-full h-full object-cover"
+                onError={handleImageError}
+              />
+            )}
+          </div>
+        )}
+        
+        {/* Third image (if exists) */}
+        {mediaArray.length > 2 && (
+          <div className="rounded-md overflow-hidden relative" style={{ height: '200px' }}>
+            {mediaArray[2].type === "video" ? (
+              <div className="relative h-full" onClick={e => e.stopPropagation()}>
+                <video
+                  ref={el => videoRefs.current[`video-2`] = el}
+                  src={mediaArray[2].url}
+                  controls
+                  controlsList="nodownload"
+                  className="w-full h-full object-cover"
+                  poster={`${process.env.PUBLIC_URL || ""}/logo.png`}
+                />
+                <div className="absolute top-2 right-2 bg-black bg-opacity-60 rounded-full p-1">
+                  <VideocamIcon className="text-white" fontSize="small" />
+                </div>
+              </div>
+            ) : (
+              <img
+                src={mediaArray[2].url}
+                alt="Media 3"
+                className="w-full h-full object-cover"
+                onError={handleImageError}
+              />
+            )}
+            
+            {/* Overlay with count if more than 3 images */}
+            {mediaArray.length > 3 && (
+              <div 
+                className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/homepage/triplet/${post.postId || post.id}`);
+                }}
+              >
+                <Typography variant="h4" className="text-white font-bold">
+                  +{mediaArray.length - 3}
+                </Typography>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
   };
 
   const isSharedPost = post.isShared || post.isSharedContent || post.shareId;
@@ -996,25 +1210,57 @@ const TripleTCard = ({ post, profileUserId }) => {
                 {mediaArray.length > 0 && (
                   <div className={`rounded-xl overflow-hidden ${mediaArray.length > 1 ? 'grid grid-cols-2 gap-1' : ''}`}>
                     {mediaArray.length === 1 ? (
-                      <img 
-                        src={mediaArray[0]} 
-                        alt="Post media" 
-                        className="w-full h-auto max-h-[300px] object-cover"
-                        onError={handleImageError}
-                      />
+                      mediaArray[0].type === "video" ? (
+                        <div className="relative group">
+                          <video 
+                            src={mediaArray[0].url} 
+                            controls 
+                            controlsList="nodownload"
+                            className="w-full h-auto max-h-[300px] object-contain"
+                            poster={`${process.env.PUBLIC_URL || ""}/logo.png`}
+                            onClick={e => e.stopPropagation()}
+                          />
+                          <div className="absolute top-2 right-2 bg-black bg-opacity-60 rounded-full p-1">
+                            <VideocamIcon className="text-white" fontSize="small" />
+                          </div>
+                        </div>
+                      ) : (
+                        <img 
+                          src={mediaArray[0].url} 
+                          alt="Post media" 
+                          className="w-full h-auto max-h-[300px] object-contain"
+                          onError={handleImageError}
+                        />
+                      )
                     ) : (
-                      mediaArray.slice(0, 4).map((mediaUrl, index) => (
+                      mediaArray.slice(0, 4).map((media, index) => (
                         <div 
                           key={index} 
                           className={`${mediaArray.length === 3 && index === 0 ? 'col-span-2' : ''} 
                                     ${mediaArray.length > 4 && index === 3 ? 'relative' : ''}`}
                         >
-                          <img 
-                            src={mediaUrl || ''} 
-                            alt={`Media ${index + 1}`} 
-                            className="w-full h-48 object-cover"
-                            onError={handleImageError}
-                          />
+                          {media.type === "video" ? (
+                            <div className="relative h-48 group">
+                              <video 
+                                src={media.url} 
+                                controls 
+                                controlsList="nodownload"
+                                className="w-full h-48 object-cover"
+                                poster={`${process.env.PUBLIC_URL || ""}/logo.png`}
+                                onClick={e => e.stopPropagation()}
+                              />
+                              <div className="absolute top-2 right-2 bg-black bg-opacity-60 rounded-full p-1">
+                                <VideocamIcon className="text-white" fontSize="small" />
+                              </div>
+                            </div>
+                          ) : (
+                            <img 
+                              src={media.url || ''} 
+                              alt={`Media ${index + 1}`} 
+                              className="w-full h-48 object-cover"
+                              onError={handleImageError}
+                            />
+                          )}
                           {mediaArray.length > 4 && index === 3 && (
                             <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
                               <span className="text-white text-2xl font-bold">+{mediaArray.length - 4}</span>
@@ -1029,38 +1275,7 @@ const TripleTCard = ({ post, profileUserId }) => {
             </Paper>
           )}
           
-          {!isSharedPost && mediaArray.length > 0 && (
-            <div className={`mt-2 mb-3 rounded-2xl overflow-hidden ${mediaArray.length > 1 ? 'grid grid-cols-2 gap-1' : ''}`}>
-              {mediaArray.length === 1 ? (
-                <img 
-                  src={mediaArray[0]} 
-                  alt="Post media" 
-                  className="w-full h-auto max-h-[500px] object-cover"
-                  onError={handleImageError}
-                />
-              ) : (
-                mediaArray.slice(0, 4).map((mediaUrl, index) => (
-                  <div 
-                    key={index} 
-                    className={`${mediaArray.length === 3 && index === 0 ? 'col-span-2' : ''} 
-                                ${mediaArray.length > 4 && index === 3 ? 'relative' : ''}`}
-                  >
-                    <img 
-                      src={mediaUrl || ''} 
-                      alt={`Media ${index + 1}`} 
-                      className="w-full h-64 object-cover"
-                      onError={handleImageError}
-                    />
-                    {mediaArray.length > 4 && index === 3 && (
-                      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                        <span className="text-white text-2xl font-bold">+{mediaArray.length - 4}</span>
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          )}
+          {!isSharedPost && renderMedia()}
           
           <div className="flex justify-between mt-3 max-w-md">
             <div className="flex items-center group">
@@ -1233,17 +1448,25 @@ const TripleTCard = ({ post, profileUserId }) => {
             </Box>
           )}
           
-          {editPreviewUrl && (
+          {editPreviewUrl && selectedEditImage && (
             <Box sx={{ mt: 2, position: 'relative', maxWidth: 300 }}>
               <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.8)', mb: 1 }}>
-                Ảnh mới:
+                {selectedEditImage.type.startsWith('video') ? 'Video mới:' : 'Ảnh mới:'}
               </Typography>
               <Box sx={{ position: 'relative' }}>
-                <img 
-                  src={editPreviewUrl} 
-                  alt="New media preview" 
-                  style={{ width: '100%', borderRadius: '8px' }}
-                />
+                {selectedEditImage.type.startsWith('video') ? (
+                  <video 
+                    src={editPreviewUrl} 
+                    controls
+                    style={{ width: '100%', borderRadius: '8px' }}
+                  />
+                ) : (
+                  <img 
+                    src={editPreviewUrl} 
+                    alt="New media preview" 
+                    style={{ width: '100%', borderRadius: '8px' }}
+                  />
+                )}
                 <IconButton
                   size="small"
                   sx={{
@@ -1277,14 +1500,14 @@ const TripleTCard = ({ post, profileUserId }) => {
                 variant="outlined"
                 component="span"
               >
-                {editPreviewUrl ? 'Chọn ảnh khác' : 'Thêm ảnh mới'}
+                {editPreviewUrl ? 'Chọn file khác' : 'Thêm ảnh/video mới'}
               </Button>
               <input
                 type="file"
-                name="editImageFile"
+                name="editMediaFile"
                 className="hidden"
-                accept="image/*"
-                onChange={handleSelectEditImage}
+                accept="image/*,video/*"
+                onChange={handleSelectEditMedia}
               />
             </label>
           </Box>
@@ -1413,13 +1636,28 @@ const TripleTCard = ({ post, profileUserId }) => {
                     mb: 1 
                   }}
                 >
-                  <img 
-                    src={mediaArray[0]} 
-                    alt="Preview" 
-                    className="w-full h-full object-cover"
-                    onError={handleImageError}
-                    style={{ borderRadius: '8px' }}
-                  />
+                  {mediaArray[0].type === "video" ? (
+                    <div className="relative">
+                      <video 
+                        src={mediaArray[0].url}
+                        className="w-full h-full object-cover"
+                        style={{ borderRadius: '8px' }}
+                        poster={`${process.env.PUBLIC_URL || ""}/logo.png`}
+                        muted
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <PlayCircleOutlineIcon className="text-white text-4xl opacity-80" />
+                      </div>
+                    </div>
+                  ) : (
+                    <img 
+                      src={mediaArray[0].url} 
+                      alt="Preview" 
+                      className="w-full h-full object-cover"
+                      onError={handleImageError}
+                      style={{ borderRadius: '8px' }}
+                    />
+                  )}
                 </Box>
               )}
               

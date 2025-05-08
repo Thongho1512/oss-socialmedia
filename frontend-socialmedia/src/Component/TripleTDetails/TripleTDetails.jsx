@@ -33,6 +33,7 @@ import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import CloseIcon from "@mui/icons-material/Close";
 import ImageIcon from "@mui/icons-material/Image";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
+import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
 
 const TripleTDetails = () => {
   const { postId } = useParams();
@@ -924,7 +925,9 @@ const TripleTDetails = () => {
 
     try {
       e.target.onerror = null;
-      e.target.src = "https://via.placeholder.com/400x300?text=Image+Not+Available";
+      // Use a local image from the public folder instead of external placeholder
+      const fallbackImageUrl = `${process.env.PUBLIC_URL || ""}/logo192.png`;
+      e.target.src = fallbackImageUrl;
       e.target.classList.add("image-error");
     } catch (error) {
       console.error("Error handling image failure:", error.message);
@@ -1008,6 +1011,13 @@ const TripleTDetails = () => {
     }
 
     return "https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg";
+  };
+
+  // Hàm kiểm tra xem URL có phải là video hay không
+  const isVideoUrl = (url) => {
+    if (!url || typeof url !== 'string') return false;
+    const videoExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv', '.flv'];
+    return videoExtensions.some(ext => url.toLowerCase().endsWith(ext));
   };
 
   if (loading) {
@@ -1189,43 +1199,54 @@ const TripleTDetails = () => {
             {/* Post media */}
             {post.mediaUrls && post.mediaUrls.length > 0 && (
               <Box className="mt-2 mb-4">
-                <div
-                  className={`rounded-2xl overflow-hidden ${
-                    post.mediaUrls.length > 1 ? "grid grid-cols-2 gap-1" : ""
-                  }`}
-                >
-                  {post.mediaUrls.length === 1 ? (
-                    <img
-                      src={post.mediaUrls[0]}
-                      alt="Post media"
-                      className="w-full h-auto max-h-[500px] object-cover"
-                      onError={handleImageError}
-                    />
-                  ) : (
-                    post.mediaUrls.slice(0, 4).map((mediaUrl, index) => (
+                {post.mediaUrls.length === 1 ? (
+                  // Single media display (full width)
+                  <div className="relative w-full rounded-md overflow-hidden">
+                    {isVideoUrl(post.mediaUrls[0]) ? (
+                      <video
+                        src={post.mediaUrls[0]}
+                        controls
+                        controlsList="nodownload"
+                        className="w-full h-auto max-h-[600px] object-contain rounded-md"
+                        poster={`${process.env.PUBLIC_URL || ""}/logo.png`}
+                      />
+                    ) : (
+                      <img
+                        src={post.mediaUrls[0]}
+                        alt="Post media"
+                        className="w-full h-auto max-h-[600px] object-contain rounded-md"
+                        onError={handleImageError}
+                      />
+                    )}
+                  </div>
+                ) : (
+                  // Multiple media gallery - Show all media in details view
+                  <div className="flex flex-col space-y-2">
+                    {post.mediaUrls.map((mediaUrl, index) => (
                       <div
                         key={index}
-                        className={`${
-                          post.mediaUrls.length === 3 && index === 0 ? "col-span-2" : ""
-                        } ${post.mediaUrls.length > 4 && index === 3 ? "relative" : ""}`}
+                        className="relative w-full rounded-md overflow-hidden"
                       >
-                        <img
-                          src={mediaUrl || ""}
-                          alt={`Media ${index + 1}`}
-                          className="w-full h-64 object-cover"
-                          onError={handleImageError}
-                        />
-                        {post.mediaUrls.length > 4 && index === 3 && (
-                          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                            <span className="text-white text-2xl font-bold">
-                              +{post.mediaUrls.length - 4}
-                            </span>
-                          </div>
+                        {isVideoUrl(mediaUrl) ? (
+                          <video
+                            src={mediaUrl}
+                            controls
+                            controlsList="nodownload"
+                            className="w-full h-auto max-h-[500px] object-contain rounded-md"
+                            poster={`${process.env.PUBLIC_URL || ""}/logo.png`}
+                          />
+                        ) : (
+                          <img
+                            src={mediaUrl || ""}
+                            alt={`Media ${index + 1}`}
+                            className="w-full h-auto max-h-[500px] object-contain rounded-md"
+                            onError={handleImageError}
+                          />
                         )}
                       </div>
-                    ))
-                  )}
-                </div>
+                    ))}
+                  </div>
+                )}
               </Box>
             )}
 
@@ -1419,13 +1440,28 @@ const TripleTDetails = () => {
                     mb: 1 
                   }}
                 >
-                  <img 
-                    src={post.mediaUrls[0]} 
-                    alt="Preview" 
-                    className="w-full h-full object-cover"
-                    onError={handleImageError}
-                    style={{ borderRadius: '8px' }}
-                  />
+                  {isVideoUrl(post.mediaUrls[0]) ? (
+                    <div className="relative">
+                      <video 
+                        src={post.mediaUrls[0]}
+                        className="w-full h-full object-cover"
+                        style={{ borderRadius: '8px' }}
+                        poster={`${process.env.PUBLIC_URL || ""}/logo.png`}
+                        muted
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <PlayCircleOutlineIcon className="text-white text-4xl opacity-80" />
+                      </div>
+                    </div>
+                  ) : (
+                    <img 
+                      src={post.mediaUrls[0]} 
+                      alt="Preview" 
+                      className="w-full h-full object-cover"
+                      onError={handleImageError}
+                      style={{ borderRadius: '8px' }}
+                    />
+                  )}
                 </Box>
               )}
               
