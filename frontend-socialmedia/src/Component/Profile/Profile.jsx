@@ -858,7 +858,7 @@ const Profile = ({ userData: propUserData, onBack }) => {
           {userPosts.length > 0 ? (
             <div>
               {userPosts.map((post, index) => (
-                <React.Fragment key={`post-${post.id}-${index}`}>
+                <React.Fragment key={`post-${post.id || post.postId}-${userId}-${index}`}>
                   <TripleTCard
                     post={preparePostForTripleTCard(post)}
                     profileUserId={userId}

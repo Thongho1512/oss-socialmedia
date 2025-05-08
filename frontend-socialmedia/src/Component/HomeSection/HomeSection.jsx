@@ -159,15 +159,7 @@ const HomeSection = () => {
 
       await fetchUserLikes();
 
-      const homepageResponse = await axios.get(
-        "http://localhost:8080/api/v1/homepage",
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      );
-
+      // Only fetch from the posts endpoint for the "TẤT CẢ BÀI VIẾT" tab (not homepage)
       const allPostsResponse = await axios.get(
         `http://localhost:8080/api/v1/posts?page=${pageNum}&size=10`,
         {
@@ -177,28 +169,41 @@ const HomeSection = () => {
         }
       );
 
-      console.log("Homepage API Response:", homepageResponse.data);
       console.log("All Posts API Response:", allPostsResponse.data);
+      
+      // If we need the followed users posts for the other tab, fetch them only when needed
+      if (activeTab === 1 || pageNum === 0) {
+        const homepageResponse = await axios.get(
+          "http://localhost:8080/api/v1/homepage",
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        );
+        
+        console.log("Homepage API Response:", homepageResponse.data);
+        
+        if (
+          homepageResponse.data &&
+          homepageResponse.data.Status === 200 &&
+          Array.isArray(homepageResponse.data.Data)
+        ) {
+          const rawHomepagePosts = processPostData(homepageResponse.data.Data);
 
-      if (
-        homepageResponse.data &&
-        homepageResponse.data.Status === 200 &&
-        Array.isArray(homepageResponse.data.Data)
-      ) {
-        const rawHomepagePosts = processPostData(homepageResponse.data.Data);
-
-        const userId = localStorage.getItem("user_id");
-        if (userId) {
-          const userPosts = rawHomepagePosts.filter(
-            (post) => post.userId === userId
-          );
-          const followedUserPosts = rawHomepagePosts.filter(
-            (post) => post.userId !== userId
-          );
-          setMyPosts(userPosts);
-          setFollowingPosts(followedUserPosts);
-        } else {
-          setFollowingPosts(rawHomepagePosts);
+          const userId = localStorage.getItem("user_id");
+          if (userId) {
+            const userPosts = rawHomepagePosts.filter(
+              (post) => post.userId === userId
+            );
+            const followedUserPosts = rawHomepagePosts.filter(
+              (post) => post.userId !== userId
+            );
+            setMyPosts(userPosts);
+            setFollowingPosts(followedUserPosts);
+          } else {
+            setFollowingPosts(rawHomepagePosts);
+          }
         }
       }
 
@@ -222,20 +227,27 @@ const HomeSection = () => {
 
         const rawAllPosts = processPostData(allPostsData);
 
-        const uniquePostIds = new Set();
-        const processedAllPosts = rawAllPosts.filter((post) => {
+        // Create a Map instead of a Set to ensure we have truly unique posts by ID
+        const uniquePostsMap = new Map();
+        rawAllPosts.forEach(post => {
           const postId = post.id || post.postId;
-          if (!postId || uniquePostIds.has(postId)) {
-            return false;
+          if (postId) {
+            uniquePostsMap.set(postId, post);
           }
-          uniquePostIds.add(postId);
-          return true;
         });
+        
+        // Convert Map back to array
+        const processedAllPosts = Array.from(uniquePostsMap.values());
 
         if (pageNum === 0) {
           setAllPosts(processedAllPosts);
         } else {
-          setAllPosts(prevPosts => [...prevPosts, ...processedAllPosts]);
+          // For pagination, ensure we don't add duplicates when loading more
+          setAllPosts(prevPosts => {
+            const existingIds = new Set(prevPosts.map(p => p.id || p.postId));
+            const newPosts = processedAllPosts.filter(p => !existingIds.has(p.id || p.postId));
+            return [...prevPosts, ...newPosts];
+          });
         }
 
         setHasMore(processedAllPosts.length > 0);
@@ -455,12 +467,12 @@ const HomeSection = () => {
             {getDisplayPosts().map((post, index) => {
               if (getDisplayPosts().length === index + 1) {
                 return (
-                  <div ref={lastPostElementRef} key={post.id || index}>
+                  <div ref={lastPostElementRef} key={`${post.id || post.postId}-${index}-lastRef`}>
                     <TripleTCard post={post} />
                   </div>
                 );
               } else {
-                return <TripleTCard key={post.id || index} post={post} />;
+                return <TripleTCard key={`${post.id || post.postId}-${index}`} post={post} />;
               }
             })}
             {loadingMore && (

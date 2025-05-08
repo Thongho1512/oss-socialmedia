@@ -311,7 +311,7 @@ const Likes = ({ userId }) => {
       {userLikes.length > 0 ? (
         <div>
           {getUniqueUsers(userLikes).map((post, index) => (
-            <React.Fragment key={`like-${post.id}-${index}`}>
+            <React.Fragment key={`like-${post.id || post.postId}-${post.likeId || index}`}>
               <TripleTCard post={preparePostForTripleTCard(post)} profileUserId={userId} />
             </React.Fragment>
           ))}

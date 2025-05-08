@@ -194,7 +194,7 @@ const RightPart = ({ onUserSelect }) => {
         <span className="mr-3 hover:underline cursor-pointer">Accessibility</span>
         <span className="mr-3 hover:underline cursor-pointer">Ads info</span>
         <span className="mr-3 hover:underline cursor-pointer">More...</span>
-        <div className="mt-1">© 2023 X Corp.</div>
+        <div className="mt-1">© 2025 TripleT Corp.</div>
       </div>
 
       {/* Messages Modal */}
