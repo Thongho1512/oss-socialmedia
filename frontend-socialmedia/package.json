@@ -12,6 +12,7 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@testing-library/user-event": "^13.5.0",
+    "axios": "^1.7.2",
     "formik": "^2.4.6",
     "frontend-react": "file:",
     "mui": "file:../../lab",
