@@ -1,14 +1,13 @@
 import { createContext, useState, useEffect } from "react";
 
-// Tạo Context
+// Create Context
 export const AuthContext = createContext();
 
-// Provider cho AuthContext
+// Provider for AuthContext
 export const AuthProvider = ({ children }) => {
   const [userId, setUserId] = useState(null);
   const [accessToken, setAccessToken] = useState(null);
-
-  // Khi app chạy, lấy dữ liệu từ localStorage
+  // When app runs, get data from localStorage
   useEffect(() => {
     const storedUserId = localStorage.getItem("user_id");
     const storedToken = localStorage.getItem("access_token");
@@ -17,16 +16,13 @@ export const AuthProvider = ({ children }) => {
       setUserId(storedUserId);
       setAccessToken(storedToken);
     }
-  }, []);
-
-  // Hàm cập nhật Auth (khi đăng nhập)
+  }, []);  // Function to update Auth (when logging in)
   const setAuthData = (userId, token) => {
     setUserId(userId);
     setAccessToken(token);
     localStorage.setItem("access_token", Response.data.access_token);
     localStorage.setItem("user_id", Response.data.user.id);
   };
-
   // Hàm logout
   const logout = () => {
     localStorage.removeItem("user_id");

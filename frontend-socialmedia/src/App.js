@@ -23,3 +23,4 @@ function App() {
 }
 
 export default App;
+// & 'C:\Program Files\Java\jdk-21\bin\java.exe' '@C:\Users\thang\AppData\Local\Temp\cp_djs4h0y3gvbyrxff0uxaqqye3.argfile' 'com.oss.socialmedia.SocialmediaApplication' 

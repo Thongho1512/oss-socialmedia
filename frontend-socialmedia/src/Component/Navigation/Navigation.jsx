@@ -7,7 +7,7 @@ import { UserContext } from "../Context/UserContext";
 import HomeIcon from "@mui/icons-material/Home";
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
-import SettingsIcon from "@mui/icons-material/Settings";
+import { formatAvatarUrl } from "../../utils/formatUrl";
 
 const Navigation = ({ collapsed = false }) => {
   const [anchorEl, setAnchorEl] = useState(null);
@@ -22,9 +22,9 @@ const Navigation = ({ collapsed = false }) => {
   useEffect(() => {
     const localAvatar = localStorage.getItem('user_avatar');
     if (localAvatar) {
-      setAvatarUrl(localAvatar);
+      setAvatarUrl(formatAvatarUrl(localAvatar));
     } else if (userData?.avatarUrl) {
-      setAvatarUrl(userData.avatarUrl);
+      setAvatarUrl(formatAvatarUrl(userData.avatarUrl));
     } else {
       setAvatarUrl("https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg");
     }
@@ -37,17 +37,9 @@ const Navigation = ({ collapsed = false }) => {
   const handleClose = () => {
     setAnchorEl(null);
   };
-
   const handleLogout = () => {
     logout();
     navigate("/auth/login");
-  };
-
-  const handleViewProfile = () => {
-    handleClose();
-    navigate(`/homepage/profile/${localStorage.getItem("user_id")}`, {
-      state: { from: "navigation" },
-    });
   };
   
   const isActive = (path) => {
@@ -119,10 +111,16 @@ const Navigation = ({ collapsed = false }) => {
         ))}
       </nav>
 
-      {/* Post Button */}
-      <div className={`mt-4 ${collapsed ? 'px-1' : 'px-3'}`}>
+      {/* Post Button */}      <div className={`mt-4 ${collapsed ? 'px-1' : 'px-3'}`}>
         <Button
-          onClick={() => navigate('/homepage/home')}
+          onClick={() => {
+            // Navigate to home page
+            navigate('/homepage/home');
+            // Dispatch custom event to scroll to post form
+            setTimeout(() => {
+              window.dispatchEvent(new Event('scrollToPostForm'));
+            }, 100); // Small delay to ensure navigation completes
+          }}
           sx={{
             width: "100%",
             borderRadius: "9999px",
@@ -173,14 +171,21 @@ const Navigation = ({ collapsed = false }) => {
           {!collapsed && <MoreHorizIcon />}
         </div>
       </div>
-      
-      <Menu
+        <Menu
         id="basic-menu"
         anchorEl={anchorEl}
         open={open}
         onClose={handleClose}
         MenuListProps={{
           "aria-labelledby": "basic-button",
+        }}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
         }}
         PaperProps={{
           sx: {
@@ -191,7 +196,6 @@ const Navigation = ({ collapsed = false }) => {
           }
         }}
       >
-        <MenuItem onClick={handleViewProfile}>View profile</MenuItem>
         <MenuItem onClick={handleLogout}>Logout</MenuItem>
       </Menu>
     </div>

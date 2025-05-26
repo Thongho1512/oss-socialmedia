@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { UserContext } from "../Context/UserContext";
 import {
   Avatar,
   Box,
@@ -27,11 +28,20 @@ import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import RepeatIcon from "@mui/icons-material/Repeat";
 import IosShareIcon from "@mui/icons-material/IosShare";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import EditIcon from "@mui/icons-material/Edit";
+import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
+import CloseIcon from "@mui/icons-material/Close";
+import ImageIcon from "@mui/icons-material/Image";
+import HighlightOffIcon from "@mui/icons-material/HighlightOff";
+import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
 
 const TripleTDetails = () => {
   const { postId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  
+  // Use UserContext
+  const { isPostLiked, getPostLikeId, addLike, removeLike, fetchUserLikes } = useContext(UserContext);
   
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -73,16 +83,40 @@ const TripleTDetails = () => {
   const [deletingCommentId, setDeletingCommentId] = useState(null);
   const currentUserId = localStorage.getItem("user_id");
 
+  // Add new state for share dialog
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareContent, setShareContent] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Add edit dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editedCaption, setEditedCaption] = useState("");
+  const [selectedEditImage, setSelectedEditImage] = useState(null);
+  const [editPreviewUrl, setEditPreviewUrl] = useState("");
+  const [submittingEdit, setSubmittingEdit] = useState(false);
+  const [existingMedia, setExistingMedia] = useState([]);
+  const [removedMedia, setRemovedMedia] = useState([]);
+
   const handleMenuOpen = (event) => {
+    event.stopPropagation();
     setAnchorEl(event.currentTarget);
   };
 
-  const handleMenuClose = () => {
+  const handleMenuClose = (event) => {
+    if (event) event.stopPropagation();
     setAnchorEl(null);
   };
 
   const handleDeleteDialogOpen = () => {
     setDeleteDialogOpen(true);
+    handleMenuClose();
+  };
+
+  const handleEditDialogOpen = () => {
+    setEditedCaption(post.content || "");
+    setExistingMedia(post.mediaUrls || []);
+    setRemovedMedia([]);
+    setEditDialogOpen(true);
     handleMenuClose();
   };
 
@@ -163,87 +197,134 @@ const TripleTDetails = () => {
     }
   }, [location]);
 
+  // Update like state from UserContext when postId changes or on initial load
+  useEffect(() => {
+    if (postId) {
+      const isLiked = isPostLiked(postId);
+      const currentLikeId = getPostLikeId(postId);
+      
+      setLiked(isLiked);
+      setLikeId(currentLikeId);
+      
+      console.log(`Post ${postId} like status from UserContext:`, { isLiked, currentLikeId });
+    }
+  }, [postId, isPostLiked, getPostLikeId]);
+
   // Fetch post details
   useEffect(() => {
     const fetchPostDetails = async () => {
-      setLoading(true);
       try {
+        setLoading(true);
         const accessToken = localStorage.getItem("access_token");
+        
         if (!accessToken) {
-          throw new Error("Access token not found");
+          console.error("Không tìm thấy access token");
+          setError("Không tìm thấy access token, vui lòng đăng nhập lại");
+          return;
         }
 
-        // Thử truy cập trực tiếp bài viết theo ID trước
-        console.log("Fetching post with ID:", postId);
-
-        // Thay đổi cách gọi API để lấy chính xác bài viết theo ID
-        const response = await axios
-          .get(`http://localhost:8080/api/v1/posts/${postId}`, {
+        // Sử dụng endpoint chính của API để lấy tất cả bài viết
+        const response = await axios.get(
+          `http://localhost:8080/api/v1/posts?page=0&size=50`,
+          {
             headers: {
               Authorization: `Bearer ${accessToken}`,
             },
-          })
-          .catch(async (err) => {
-            // Nếu API trực tiếp không tồn tại, sử dụng phương pháp tìm kiếm
-            console.log("Falling back to search API for post ID:", postId);
-            return await axios.get(
-              `http://localhost:8080/api/v1/posts?keyword=${postId}&size=20`,
-              {
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                },
-              }
-            );
-          });
+          }
+        );
 
         if (response.data && response.data.Status === 200) {
-          // Handle the different response structure
-          let postData = null;
-
-          // Kiểm tra cấu trúc response để tìm bài viết phù hợp
-          if (
-            response.data.Data &&
-            !Array.isArray(response.data.Data) &&
-            response.data.Data.id === postId
-          ) {
-            // Trường hợp API trả về trực tiếp bài viết
-            postData = response.data.Data;
-          } else if (
-            response.data.Data &&
-            Array.isArray(response.data.Data.posts)
-          ) {
-            // Trường hợp API trả về danh sách bài viết
-            postData = response.data.Data.posts.find((p) => p.id === postId);
-          } else if (response.data.Data && Array.isArray(response.data.Data)) {
-            // Trường hợp API trả về mảng trực tiếp
-            postData = response.data.Data.find((p) => p.id === postId);
+          // Lấy dữ liệu bài viết từ các vị trí khác nhau tùy theo cấu trúc API trả về
+          let allPosts = [];
+          
+          if (response.data.Data && response.data.Data.posts) {
+            allPosts = response.data.Data.posts;
+          } else if (Array.isArray(response.data.Data)) {
+            allPosts = response.data.Data;
+          } else if (response.data.Data && response.data.Data.content) {
+            allPosts = response.data.Data.content;
           }
-
-          if (postData) {
-            console.log("Found post data:", postData);
-            const formattedPost = formatPostData(postData);
-            setPost(formattedPost);
-            setLiked(postData.isLiked || false);
-            setLikesCount(postData.likeCount || 0);
-            setLikeId(postData.likeId || null); // Set likeId if available
-
-            // Fetch user info for the post author
+          
+          // Tìm bài viết phù hợp với ID
+          const targetPost = allPosts.find(p => p.id === postId);
+          
+          if (targetPost) {
+            const postData = formatPostData(targetPost);
+            setPost(postData);
+            setLikesCount(postData.likeCount || postData.likesCount || 0);
+            
+            // Set initial values for edit form
+            setEditedCaption(postData.content || "");
+            setExistingMedia(postData.mediaUrls || []);
+            
+            // Check like status from UserContext instead of making a separate API call
+            const isLiked = isPostLiked(postId);
+            const currentLikeId = getPostLikeId(postId);
+            
+            setLiked(isLiked);
+            setLikeId(currentLikeId);
+            
+            // Fetch post author's data
             if (postData.userId) {
               fetchPostUser(postData.userId);
             }
-
-            // Fetch comments after getting post details
+            
+            // Fetch comments for this post
             fetchComments();
           } else {
-            console.error("Không tìm thấy bài viết với ID:", postId);
-            setError("Không tìm thấy bài viết");
+            // Thử dùng API homepage để tìm bài viết nếu không tìm thấy từ API posts
+            try {
+              const homepageResponse = await axios.get(
+                `http://localhost:8080/api/v1/homepage`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                  },
+                }
+              );
+              
+              if (homepageResponse.data && homepageResponse.data.Status === 200) {
+                const homepagePosts = Array.isArray(homepageResponse.data.Data) ? 
+                  homepageResponse.data.Data : [];
+                  
+                const targetHomepagePost = homepagePosts.find(p => p.id === postId);
+                
+                if (targetHomepagePost) {
+                  const postData = formatPostData(targetHomepagePost);
+                  setPost(postData);
+                  setLikesCount(postData.likeCount || postData.likesCount || 0);
+                  
+                  // Kiểm tra lại trạng thái like từ UserContext
+                  const isLiked = isPostLiked(postId);
+                  const currentLikeId = getPostLikeId(postId);
+                  
+                  setLiked(isLiked);
+                  setLikeId(currentLikeId);
+                  
+                  // Fetch post author's data
+                  if (postData.userId) {
+                    fetchPostUser(postData.userId);
+                  }
+                  
+                  // Fetch comments for this post
+                  fetchComments();
+                } else {
+                  console.error("Không tìm thấy bài viết với ID:", postId);
+                  setError("Không tìm thấy bài viết");
+                }
+              }
+            } catch (homepageError) {
+              console.error("Lỗi khi tải từ API homepage:", homepageError);
+              setError("Không tìm thấy bài viết");
+            }
           }
         } else {
-          setError("Không thể tải thông tin bài viết");
+          console.error("Error fetching post details:", response.data);
+          setError("Could not load post details");
         }
       } catch (err) {
-        console.error("Lỗi khi tải thông tin bài viết:", err);
-        setError(`Đã xảy ra lỗi: ${err.message}`);
+        console.error("Error loading post:", err);
+        setError("An error occurred while loading the post");
       } finally {
         setLoading(false);
       }
@@ -252,7 +333,7 @@ const TripleTDetails = () => {
     if (postId) {
       fetchPostDetails();
     }
-  }, [postId]);
+  }, [postId, isPostLiked, getPostLikeId]);
 
   // Fetch post author's user info
   const fetchPostUser = async (userId) => {
@@ -427,16 +508,9 @@ const TripleTDetails = () => {
     }
   };
 
-  // Handle like/unlike
+  // Handle like/unlike with UserContext
   const handleLike = async () => {
     try {
-      const accessToken = localStorage.getItem("access_token");
-
-      if (!accessToken) {
-        console.error("Không tìm thấy access token");
-        return;
-      }
-
       const newLikedState = !liked;
       const newLikesCount = newLikedState ? likesCount + 1 : likesCount - 1;
 
@@ -445,53 +519,69 @@ const TripleTDetails = () => {
       setLikesCount(newLikesCount);
       
       if (newLikedState) {
-        // Like post using the new API endpoint
-        const response = await axios.post(
-          'http://localhost:8080/api/v1/likes',
-          {
-            postId: postId
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-        
-        if (response.data && response.data.Status === 200) {
-          console.log("Like post successful:", response.data);
-          setLikeId(response.data.Data.likeId || null); // Set likeId from response
+        // Use addLike from UserContext
+        const newLike = await addLike(postId);
+        if (newLike) {
+          console.log("Like added successfully using UserContext:", newLike);
+          // Make sure we store the proper ID format
+          setLikeId(newLike.likeId || newLike.id);
         } else {
-          console.error("API like failed:", response.data);
           // Revert UI changes if API call fails
+          console.error("Failed to add like");
           setLiked(liked);
           setLikesCount(likesCount);
         }
       } else {
-        // Unlike post using the specific like ID
-        if (!likeId) {
-          console.error("Cannot unlike post without likeId");
-          return;
-        }
-
-        const response = await axios.delete(
-          `http://localhost:8080/api/v1/likes/${likeId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`
+        try {
+          // First check if we have a valid likeId, if not try to get it again
+          let currentLikeId = likeId || getPostLikeId(postId);
+          
+          if (!currentLikeId) {
+            console.error("Cannot remove like: No valid like ID available for post", postId);
+            setLiked(liked);
+            setLikesCount(likesCount);
+            return;
+          }
+          
+          // Check if it's a temporary ID and handle appropriately
+          if (currentLikeId.startsWith('temp-')) {
+            console.warn("Detected temporary like ID. Will refresh likes and try again.");
+            // Refresh likes to get the actual like ID from the server
+            await fetchUserLikes(true);
+            // Try to get the real like ID again after refresh
+            currentLikeId = getPostLikeId(postId);
+            
+            if (!currentLikeId || currentLikeId.startsWith('temp-')) {
+              console.error("Still have invalid like ID after refresh:", currentLikeId);
+              setLiked(liked);
+              setLikesCount(likesCount);
+              return;
             }
           }
-        );
-        
-        if (response.data && response.data.Status === 200) {
-          console.log("Unlike post successful:", response.data);
-          setLikeId(null); // Clear likeId after successful unlike
-        } else {
-          console.error("API unlike failed:", response.data.Message);
-          // Revert UI changes if API call fails
-          setLiked(liked);
-          setLikesCount(likesCount);
+          
+          // Now use removeLike with the confirmed likeId and the postId
+          const success = await removeLike(currentLikeId, postId);
+          if (success) {
+            console.log("Like removed successfully using UserContext");
+            setLikeId(null);
+          } else {
+            // Revert UI changes if API call fails
+            console.error("Failed to remove like");
+            setLiked(liked);
+            setLikesCount(likesCount);
+          }
+        } catch (error) {
+          // Handle specific 404 errors gracefully - the like may already be deleted
+          if (error.response && error.response.status === 404) {
+            console.warn("Like was already removed from server (404 error). Updating local state.");
+            setLikeId(null);
+            // Keep the optimistic UI update since the end result is correct
+          } else {
+            console.error("Error removing like:", error);
+            // Revert UI changes on other errors
+            setLiked(liked);
+            setLikesCount(likesCount);
+          }
         }
       }
     } catch (error) {
@@ -654,37 +744,155 @@ const TripleTDetails = () => {
   };
 
   // Handle sharing the post
-  const handleShare = async () => {
+  const handleShare = async (e) => {
+    if (e) e.stopPropagation();
+    setShareDialogOpen(true);
+  };
+  
+  // Handle dialog click
+  const handleDialogClick = (e) => {
+    if (e) e.stopPropagation();
+  };
+  
+  // Handle share submit
+  const handleShareSubmit = async () => {
     try {
+      setIsLoading(true);
       const accessToken = localStorage.getItem("access_token");
-
+      
       if (!accessToken) {
-        console.error("Access token not found");
+        console.error("Không tìm thấy access token");
         return;
       }
-
+      
       const response = await axios.post(
         `http://localhost:8080/api/v1/shares`,
         {
-          content: "", // Empty content for simple share
-          postId: postId,
+          content: shareContent,
+          postId: postId
         },
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      if (response.data && response.data.Status === 200) {
+        console.log("Share thành công:", response.data);
+        alert('Đã chia sẻ bài viết thành công!');
+      } else {
+        console.error("API share thất bại:", response.data);
+        alert('Không thể chia sẻ bài viết, vui lòng thử lại sau!');
+      }
+    } catch (error) {
+      console.error("Lỗi khi gọi API share:", error);
+      alert('Không thể chia sẻ bài viết, vui lòng thử lại sau!');
+    } finally {
+      setShareDialogOpen(false);
+      setShareContent("");
+      setIsLoading(false);
+    }
+  };
+
+  // Add function to handle image selection for editing
+  const handleSelectEditImage = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setSelectedEditImage(file);
+      setEditPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  // Add function to handle existing media removal
+  const handleRemoveExistingMedia = (urlToRemove) => {
+    setExistingMedia(prev => prev.filter(url => url !== urlToRemove));
+    setRemovedMedia(prev => [...prev, urlToRemove]);
+  };
+
+  // Add function to clear selected new image
+  const handleClearNewImage = () => {
+    setSelectedEditImage(null);
+    setEditPreviewUrl("");
+  };
+
+  // Add function to submit edited post
+  const handleSubmitEdit = async () => {
+    try {
+      setSubmittingEdit(true);
+      const accessToken = localStorage.getItem("access_token");
+      const userId = localStorage.getItem("user_id");
+      
+      if (!accessToken || !userId) {
+        console.error("Không tìm thấy accessToken hoặc userId");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("id", postId);
+      formData.append("userId", post.userId);
+      formData.append("caption", editedCaption);
+      formData.append("likeCount", post.likeCount || 0);
+      formData.append("commentCount", post.commentCount || 0);
+      formData.append("shareCount", post.shareCount || 0);
+      formData.append("privacy", true);
+      formData.append("createdAt", post.createdAt);
+
+      if (selectedEditImage) {
+        formData.append("media", selectedEditImage);
+      }
+
+      // Keep any existing media that wasn't removed
+      existingMedia.forEach((mediaUrl) => {
+        // Extract only the filename part if it's a URL
+        const mediaPath = mediaUrl.startsWith('http://localhost:8080/') 
+          ? mediaUrl.substring('http://localhost:8080/'.length) 
+          : mediaUrl;
+        
+        formData.append("media", mediaPath);
+      });
+      
+      const response = await axios.put(
+        "http://localhost:8080/api/v1/posts",
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "multipart/form-data",
           },
         }
       );
 
       if (response.data && response.data.Status === 200) {
-        alert("Đã chia sẻ bài viết thành công!");
+        // Update the post content locally
+        setPost({
+          ...post,
+          content: editedCaption,
+          mediaUrls: [...existingMedia, editPreviewUrl].filter(url => url),
+        });
+        
+        // Close the dialog
+        setEditDialogOpen(false);
+        
+        // Reset the form
+        setSelectedEditImage(null);
+        setEditPreviewUrl("");
+        
+        // Show success message
+        alert("Bài viết đã được cập nhật thành công!");
+        
+        // Refresh the post data
+        window.location.reload();
       } else {
-        alert("Không thể chia sẻ bài viết, vui lòng thử lại sau!");
+        console.error("API cập nhật bài viết thất bại:", response.data);
+        alert("Không thể cập nhật bài viết, vui lòng thử lại sau!");
       }
     } catch (error) {
-      console.error("Error sharing post:", error);
-      alert("Không thể chia sẻ bài viết, vui lòng thử lại sau!");
+      console.error("Lỗi khi cập nhật bài viết:", error);
+      alert("Không thể cập nhật bài viết, vui lòng thử lại sau!");
+    } finally {
+      setSubmittingEdit(false);
     }
   };
 
@@ -717,7 +925,9 @@ const TripleTDetails = () => {
 
     try {
       e.target.onerror = null;
-      e.target.src = "https://via.placeholder.com/400x300?text=Image+Not+Available";
+      // Use a local image from the public folder instead of external placeholder
+      const fallbackImageUrl = `${process.env.PUBLIC_URL || ""}/logo192.png`;
+      e.target.src = fallbackImageUrl;
       e.target.classList.add("image-error");
     } catch (error) {
       console.error("Error handling image failure:", error.message);
@@ -803,6 +1013,13 @@ const TripleTDetails = () => {
     return "https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg";
   };
 
+  // Hàm kiểm tra xem URL có phải là video hay không
+  const isVideoUrl = (url) => {
+    if (!url || typeof url !== 'string') return false;
+    const videoExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv', '.flv'];
+    return videoExtensions.some(ext => url.toLowerCase().endsWith(ext));
+  };
+
   if (loading) {
     return (
       <Box className="flex flex-col items-center justify-center min-h-[50vh]">
@@ -869,12 +1086,15 @@ const TripleTDetails = () => {
           Bài viết
         </Typography>
       </div>
-
       {/* Post content */}
       <div className="flex flex-col px-4 py-4 border-b border-gray-800">
         {/* User info */}
         <div className="flex items-start space-x-3 mb-3">
-          <div onClick={(e) => handleNavigateToProfile(e, post.userId || post.user?.id)}>
+          <div
+            onClick={(e) =>
+              handleNavigateToProfile(e, post.userId || post.user?.id)
+            }
+          >
             <Avatar
               src={getPostUserAvatar()}
               alt={getPostUserUsername()}
@@ -884,14 +1104,102 @@ const TripleTDetails = () => {
           </div>
 
           <div className="flex flex-col flex-1">
-            <div className="flex items-baseline space-x-1">
-              <span
-                className="font-bold text-white hover:underline cursor-pointer"
-                onClick={(e) => handleNavigateToProfile(e, post.userId || post.user?.id)}
+            <div className="flex items-baseline space-x-1 justify-between">
+              <div className="flex items-baseline space-x-1">
+                <span
+                  className="font-bold text-white hover:underline cursor-pointer"
+                  onClick={(e) =>
+                    handleNavigateToProfile(e, post.userId || post.user?.id)
+                  }
+                >
+                  {getPostUserDisplayName()}
+                </span>
+                <span className="text-gray-500 text-sm">
+                  @{getPostUserUsername()}
+                </span>
+              </div>
+
+              {/* Add the three-dots menu icon */}
+              <IconButton
+                aria-label="more"
+                id="post-menu-button"
+                aria-controls="post-menu"
+                aria-haspopup="true"
+                aria-expanded={Boolean(anchorEl) ? "true" : undefined}
+                onClick={handleMenuOpen}
+                sx={{
+                  padding: "4px",
+                  color: "rgb(113, 118, 123)",
+                  "&:hover": {
+                    backgroundColor: "rgba(29, 155, 240, 0.1)",
+                    color: "rgb(29, 155, 240)",
+                  },
+                }}
               >
-                {getPostUserDisplayName()}
-              </span>
-              <span className="text-gray-500 text-sm">@{getPostUserUsername()}</span>
+                <MoreHorizIcon fontSize="small" />
+              </IconButton>
+
+              {/* Menu for the three dots icon */}
+              <Menu
+                id="post-menu"
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={handleMenuClose}
+                onClick={(e) => e.stopPropagation()}
+                PaperProps={{
+                  sx: {
+                    backgroundColor: "#15202b",
+                    color: "white",
+                    boxShadow: "0px 5px 15px rgba(0, 0, 0, 0.3)",
+                    "& .MuiMenuItem-root": {
+                      fontSize: "14px",
+                      padding: "8px 16px",
+                    },
+                  },
+                }}
+                transformOrigin={{ horizontal: "right", vertical: "top" }}
+                anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+              >
+                {String(post?.userId) === String(currentUserId) && (
+                  <>
+                    <MenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditDialogOpen();
+                      }}
+                      sx={{
+                        color: "rgb(29, 155, 240)",
+                        "&:hover": {
+                          backgroundColor: "rgba(29, 155, 240, 0.1)",
+                        },
+                      }}
+                    >
+                      <ListItemIcon sx={{ color: "rgb(29, 155, 240)" }}>
+                        <EditIcon fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText>Edit Post</ListItemText>
+                    </MenuItem>
+                    <MenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMenuClose(e);
+                        handleDeleteDialogOpen();
+                      }}
+                      sx={{
+                        color: "#ff4081",
+                        "&:hover": {
+                          backgroundColor: "rgba(255, 64, 129, 0.1)",
+                        },
+                      }}
+                    >
+                      <ListItemIcon sx={{ color: "#ff4081" }}>
+                        <DeleteOutlineIcon fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText>Delete Post</ListItemText>
+                    </MenuItem>
+                  </>
+                )}
+              </Menu>
             </div>
 
             {/* Post content */}
@@ -902,51 +1210,56 @@ const TripleTDetails = () => {
             {/* Post media */}
             {post.mediaUrls && post.mediaUrls.length > 0 && (
               <Box className="mt-2 mb-4">
-                <div
-                  className={`rounded-2xl overflow-hidden ${
-                    post.mediaUrls.length > 1 ? "grid grid-cols-2 gap-1" : ""
-                  }`}
-                >
-                  {post.mediaUrls.length === 1 ? (
-                    <img
-                      src={post.mediaUrls[0]}
-                      alt="Post media"
-                      className="w-full h-auto max-h-[500px] object-cover"
-                      onError={handleImageError}
-                    />
-                  ) : (
-                    post.mediaUrls.slice(0, 4).map((mediaUrl, index) => (
+                {post.mediaUrls.length === 1 ? (
+                  // Single media display (full width)
+                  <div className="relative w-full rounded-md overflow-hidden">
+                    {isVideoUrl(post.mediaUrls[0]) ? (
+                      <video
+                        src={post.mediaUrls[0]}
+                        controls
+                        controlsList="nodownload"
+                        className="w-full h-auto max-h-[600px] object-contain rounded-md"
+                        poster={`${process.env.PUBLIC_URL || ""}/logo.png`}
+                      />
+                    ) : (
+                      <img
+                        src={post.mediaUrls[0]}
+                        alt="Post media"
+                        className="w-full h-auto max-h-[600px] object-contain rounded-md"
+                        onError={handleImageError}
+                      />
+                    )}
+                  </div>
+                ) : (
+                  // Multiple media gallery - Show all media in details view
+                  <div className="flex flex-col space-y-2">
+                    {post.mediaUrls.map((mediaUrl, index) => (
                       <div
                         key={index}
-                        className={`${
-                          post.mediaUrls.length === 3 && index === 0 ? "col-span-2" : ""
-                        } ${post.mediaUrls.length > 4 && index === 3 ? "relative" : ""}`}
+                        className="relative w-full rounded-md overflow-hidden"
                       >
-                        <img
-                          src={mediaUrl || ""}
-                          alt={`Media ${index + 1}`}
-                          className="w-full h-64 object-cover"
-                          onError={handleImageError}
-                        />
-                        {post.mediaUrls.length > 4 && index === 3 && (
-                          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                            <span className="text-white text-2xl font-bold">
-                              +{post.mediaUrls.length - 4}
-                            </span>
-                          </div>
+                        {isVideoUrl(mediaUrl) ? (
+                          <video
+                            src={mediaUrl}
+                            controls
+                            controlsList="nodownload"
+                            className="w-full h-auto max-h-[500px] object-contain rounded-md"
+                            poster={`${process.env.PUBLIC_URL || ""}/logo.png`}
+                          />
+                        ) : (
+                          <img
+                            src={mediaUrl || ""}
+                            alt={`Media ${index + 1}`}
+                            className="w-full h-auto max-h-[500px] object-contain rounded-md"
+                            onError={handleImageError}
+                          />
                         )}
                       </div>
-                    ))
-                  )}
-                </div>
+                    ))}
+                  </div>
+                )}
               </Box>
             )}
-
-            {/* Post time */}
-            <Typography variant="body2" className="text-gray-500 mt-2">
-              {new Date(post.createdAt).toLocaleTimeString()} ·{" "}
-              {new Date(post.createdAt).toLocaleDateString()}
-            </Typography>
 
             {/* Post stats */}
             <Box className="flex items-center space-x-5 py-3 mt-2 border-t border-b border-gray-800">
@@ -968,7 +1281,10 @@ const TripleTDetails = () => {
               </Box>
               <Box className="flex items-center">
                 <Typography variant="body2" className="text-gray-400">
-                  <span className="font-bold text-white">{post.shareCount || 0}</span> Shares
+                  <span className="font-bold text-white">
+                    {post.shareCount || 0}
+                  </span>{" "}
+                  Shares
                 </Typography>
               </Box>
             </Box>
@@ -976,50 +1292,67 @@ const TripleTDetails = () => {
             {/* Action buttons */}
             <div className="flex justify-between mt-3 max-w-md">
               <div className="flex items-center group">
-                <IconButton 
-                  size="small" 
+                <IconButton
+                  size="small"
                   onClick={() => setShowCommentInput(!showCommentInput)}
-                  sx={{ 
-                    color: showCommentInput ? 'rgb(29, 155, 240)' : 'rgb(113, 118, 123)',
-                    '&:hover': { color: 'rgb(29, 155, 240)', bgcolor: 'rgba(29, 155, 240, 0.1)' }
+                  sx={{
+                    color: showCommentInput
+                      ? "rgb(29, 155, 240)"
+                      : "rgb(113, 118, 123)",
+                    "&:hover": {
+                      color: "rgb(29, 155, 240)",
+                      bgcolor: "rgba(29, 155, 240, 0.1)",
+                    },
                   }}
                 >
                   <ChatBubbleOutlineIcon fontSize="small" />
                 </IconButton>
-                <span className={`text-xs ml-1 ${showCommentInput ? 'text-blue-400' : 'text-gray-500'} group-hover:text-blue-400`}>
+                <span
+                  className={`text-xs ml-1 ${showCommentInput ? "text-blue-400" : "text-gray-500"} group-hover:text-blue-400`}
+                >
                   {post.commentCount || comments.length || 0}
                 </span>
               </div>
-              
+
               <div className="flex items-center group">
-                <IconButton 
-                  size="small" 
+                <IconButton
+                  size="small"
                   onClick={handleShare}
-                  sx={{ 
-                    color: 'rgb(113, 118, 123)',
-                    '&:hover': { color: 'rgb(29, 155, 240)', bgcolor: 'rgba(29, 155, 240, 0.1)' }
+                  sx={{
+                    color: "rgb(113, 118, 123)",
+                    "&:hover": {
+                      color: "rgb(29, 155, 240)",
+                      bgcolor: "rgba(29, 155, 240, 0.1)",
+                    },
                   }}
                 >
-                  <RepeatIcon fontSize="small" />
+                  <IosShareIcon fontSize="small" />
                 </IconButton>
                 <span className="text-gray-500 text-xs group-hover:text-blue-400 ml-1">
                   {post.shareCount || 0}
                 </span>
               </div>
-              
+
               <div className="flex items-center group">
-                <IconButton 
-                  size="small" 
+                <IconButton
+                  size="small"
                   onClick={handleLike}
-                  sx={{ 
-                    color: liked ? 'rgb(249, 24, 128)' : 'rgb(113, 118, 123)',
-                    '&:hover': { color: 'rgb(249, 24, 128)', bgcolor: 'rgba(249, 24, 128, 0.1)' }
+                  sx={{
+                    color: liked ? "rgb(249, 24, 128)" : "rgb(113, 118, 123)",
+                    "&:hover": {
+                      color: "rgb(249, 24, 128)",
+                      bgcolor: "rgba(249, 24, 128, 0.1)",
+                    },
                   }}
                 >
-                  {liked ? <FavoriteIcon fontSize="small" /> : <FavoriteBorderIcon fontSize="small" />}
+                  {liked ? (
+                    <FavoriteIcon fontSize="small" />
+                  ) : (
+                    <FavoriteBorderIcon fontSize="small" />
+                  )}
                 </IconButton>
-                <span 
-                  className={`text-xs ml-1 ${liked ? 'text-pink-500' : 'text-gray-500'} group-hover:text-pink-500 cursor-pointer`}
+                <span
+                  className={`text-xs ml-1 ${liked ? "text-pink-500" : "text-gray-500"} group-hover:text-pink-500 cursor-pointer`}
                   onClick={handleShowLikes}
                 >
                   {likesCount}
@@ -1029,7 +1362,205 @@ const TripleTDetails = () => {
           </div>
         </div>
       </div>
+      {/* Share Dialog */}
+      <Dialog
+        open={shareDialogOpen}
+        onClose={() => setShareDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{
+          style: {
+            borderRadius: "12px",
+            backgroundColor: "#15202b",
+            color: "white",
+          },
+        }}
+      >
+        <DialogTitle
+          onClick={handleDialogClick}
+          sx={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+              Share Post
+            </Typography>
+            <IconButton
+              aria-label="close"
+              onClick={() => setShareDialogOpen(false)}
+              sx={{
+                color: "rgba(255,255,255,0.7)",
+                "&:hover": {
+                  color: "white",
+                  backgroundColor: "rgba(255,255,255,0.1)",
+                },
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent onClick={handleDialogClick} sx={{ pt: 3 }}>
+          <TextField
+            autoFocus
+            margin="dense"
+            id="shareContent"
+            label="Write your thoughts for this article..."
+            type="text"
+            fullWidth
+            variant="outlined"
+            multiline
+            rows={4}
+            value={shareContent}
+            onChange={(e) => setShareContent(e.target.value)}
+            InputProps={{
+              style: { color: "white" },
+            }}
+            InputLabelProps={{
+              style: { color: "rgba(255,255,255,0.7)" },
+            }}
+            sx={{
+              mb: 2,
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": {
+                  borderColor: "rgba(255,255,255,0.3)",
+                },
+                "&:hover fieldset": {
+                  borderColor: "rgba(255,255,255,0.5)",
+                },
+                "&.Mui-focused fieldset": {
+                  borderColor: "rgb(29, 155, 240)",
+                },
+              },
+            }}
+          />
 
+          <Paper
+            variant="outlined"
+            className="mt-4 overflow-hidden"
+            sx={{
+              backgroundColor: "rgba(39, 51, 64, 0.7)",
+              borderColor: "rgba(66, 83, 100, 0.7)",
+              borderRadius: "12px",
+            }}
+          >
+            <Box className="p-4">
+              <Box className="flex items-center mb-3">
+                <Avatar
+                  src={getPostUserAvatar()}
+                  alt={getPostUserUsername()}
+                  sx={{ width: 42, height: 42, marginRight: 1.5 }}
+                />
+                <Box>
+                  <Typography
+                    variant="subtitle1"
+                    sx={{ color: "white", fontWeight: "500" }}
+                  >
+                    {getPostUserDisplayName()}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: "rgba(255,255,255,0.6)" }}
+                  >
+                    @{getPostUserUsername()}
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Typography
+                variant="body1"
+                sx={{
+                  color: "rgba(255,255,255,0.9)",
+                  mb: 2,
+                  whiteSpace: "pre-line",
+                }}
+              >
+                {(post.content || "").length > 150
+                  ? `${(post.content || "").substring(0, 150)}...`
+                  : post.content || ""}
+              </Typography>
+
+              {post.mediaUrls && post.mediaUrls.length > 0 && (
+                <Box
+                  className="overflow-hidden rounded-lg"
+                  sx={{
+                    width: "100%",
+                    height: "auto",
+                    maxHeight: 200,
+                    mb: 1,
+                  }}
+                >
+                  {isVideoUrl(post.mediaUrls[0]) ? (
+                    <div className="relative">
+                      <video
+                        src={post.mediaUrls[0]}
+                        className="w-full h-full object-cover"
+                        style={{ borderRadius: "8px" }}
+                        poster={`${process.env.PUBLIC_URL || ""}/logo.png`}
+                        muted
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <PlayCircleOutlineIcon className="text-white text-4xl opacity-80" />
+                      </div>
+                    </div>
+                  ) : (
+                    <img
+                      src={post.mediaUrls[0]}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                      onError={handleImageError}
+                      style={{ borderRadius: "8px" }}
+                    />
+                  )}
+                </Box>
+              )}
+
+              <Typography
+                variant="caption"
+                sx={{ color: "rgba(255,255,255,0.5)", display: "block", mt: 1 }}
+              >
+                {formatTimeAgo(post.createdAt)}
+              </Typography>
+            </Box>
+          </Paper>
+        </DialogContent>
+        <DialogActions
+          onClick={handleDialogClick}
+          sx={{ p: 2, borderTop: "1px solid rgba(255,255,255,0.1)" }}
+        >
+          <Button
+            onClick={() => setShareDialogOpen(false)}
+            sx={{
+              color: "rgba(255,255,255,0.7)",
+              "&:hover": {
+                color: "white",
+                backgroundColor: "rgba(255,255,255,0.1)",
+              },
+            }}
+            disabled={isLoading}
+          >
+            Hủy
+          </Button>
+          <Button
+            onClick={handleShareSubmit}
+            variant="contained"
+            disabled={isLoading}
+            sx={{
+              bgcolor: "rgb(29, 155, 240)",
+              "&:hover": { bgcolor: "rgb(26, 140, 216)" },
+              fontWeight: "bold",
+              px: 3,
+            }}
+          >
+            {isLoading ? "Đang chia sẻ..." : "Chia sẻ"}
+          </Button>
+        </DialogActions>
+      </Dialog>
       {/* Delete confirmation dialog */}
       <Dialog
         open={deleteDialogOpen}
@@ -1070,67 +1601,314 @@ const TripleTDetails = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Likes dialog */}
-      <Dialog 
-        open={likesDialogOpen} 
+      {/* Likes dialog */}{" "}
+      <Dialog
+        open={likesDialogOpen}
         onClose={() => setLikesDialogOpen(false)}
         PaperProps={{
           style: {
-            borderRadius: '8px',
-            backgroundColor: 'white',
-            color: 'black',
-            width: '320px',
-            maxWidth: '90vw'
-          }
+            borderRadius: "8px",
+            backgroundColor: "#15202b",
+            color: "white",
+            width: "320px",
+            maxWidth: "90vw",
+          },
         }}
       >
-        <DialogTitle sx={{ pb: 1, color: 'black', fontWeight: 'bold', fontSize: '18px' }}>
-          Danh sách lượt thích
+        <DialogTitle
+          sx={{
+            pb: 1,
+            color: "white",
+            fontWeight: "bold",
+            fontSize: "18px",
+            borderBottom: "1px solid #2f3336",
+          }}
+        >
+          List of Like
         </DialogTitle>
-        <DialogContent sx={{ pb: 2, color: 'black' }}>
+        <DialogContent sx={{ pb: 2, color: "white" }}>
           {loadingLikes ? (
-            <Typography sx={{ fontSize: '15px', textAlign: 'center' }}>
+            <Typography
+              sx={{ fontSize: "15px", textAlign: "center", color: "#d9d9d9" }}
+            >
               Đang tải...
             </Typography>
           ) : likesList.length > 0 ? (
             likesList.map((like) => (
-              <Box 
-                key={like.id} 
-                className="flex items-center mb-2 p-2 hover:bg-gray-100 rounded-lg cursor-pointer"
+              <Box
+                key={like.id}
+                className="flex items-center mb-2 p-2 hover:bg-gray-800 rounded-lg cursor-pointer"
                 onClick={() => navigate(`/homepage/profile/${like.userId}`)}
               >
-                <Avatar 
-                  src={getLikeUserAvatar(like.userId)} 
+                <Avatar
+                  src={getLikeUserAvatar(like.userId)}
                   alt={getLikeUserUsername(like.userId)}
                   sx={{ width: 32, height: 32, marginRight: 1 }}
                 />
                 <Box>
-                  <Typography variant="subtitle2" className="text-gray-800 font-medium">
+                  <Typography
+                    variant="subtitle2"
+                    className="text-white font-medium"
+                  >
                     {getLikeUserDisplayName(like.userId)}
                   </Typography>
-                  <Typography variant="caption" className="text-gray-500">
+                  <Typography variant="caption" className="text-gray-400">
                     @{getLikeUserUsername(like.userId)}
                   </Typography>
                 </Box>
               </Box>
             ))
           ) : (
-            <Typography sx={{ fontSize: '15px', textAlign: 'center' }}>
+            <Typography
+              sx={{ fontSize: "15px", textAlign: "center", color: "#d9d9d9" }}
+            >
               Không có lượt thích nào.
             </Typography>
           )}
         </DialogContent>
-        <DialogActions sx={{ display: 'flex', justifyContent: 'center', p: 1, borderTop: '1px solid #eee' }}>
-          <Button 
-            onClick={() => setLikesDialogOpen(false)} 
-            sx={{ color: 'black', fontWeight: 'bold', textTransform: 'none' }}
+        <DialogActions
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            p: 1,
+            borderTop: "1px solid #2f3336",
+          }}
+        >
+          <Button
+            onClick={() => setLikesDialogOpen(false)}
+            sx={{
+              color: "white",
+              fontWeight: "bold",
+              textTransform: "none",
+              "&:hover": { backgroundColor: "rgba(255, 255, 255, 0.1)" },
+            }}
           >
-            Đóng
+            Exit
           </Button>
         </DialogActions>
       </Dialog>
+      {/* Edit Post Dialog */}
+      <Dialog
+        open={editDialogOpen}
+        onClose={() => setEditDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{
+          style: {
+            borderRadius: "12px",
+            backgroundColor: "#15202b",
+            color: "white",
+          },
+        }}
+      >
+        <DialogTitle
+          onClick={handleDialogClick}
+          sx={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+              Edit Post
+            </Typography>
+            <IconButton
+              aria-label="close"
+              onClick={() => setEditDialogOpen(false)}
+              sx={{
+                color: "rgba(255,255,255,0.7)",
+                "&:hover": {
+                  color: "white",
+                  backgroundColor: "rgba(255,255,255,0.1)",
+                },
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent onClick={handleDialogClick} sx={{ pt: 3 }}>
+          <TextField
+            autoFocus
+            margin="dense"
+            id="editCaption"
+            label="Post Caption"
+            type="text"
+            fullWidth
+            variant="outlined"
+            multiline
+            rows={4}
+            value={editedCaption}
+            onChange={(e) => setEditedCaption(e.target.value)}
+            InputProps={{
+              style: { color: "white" },
+            }}
+            InputLabelProps={{
+              style: { color: "rgba(255,255,255,0.7)" },
+            }}
+            sx={{
+              mb: 2,
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": {
+                  borderColor: "rgba(255,255,255,0.3)",
+                },
+                "&:hover fieldset": {
+                  borderColor: "rgba(255,255,255,0.5)",
+                },
+                "&.Mui-focused fieldset": {
+                  borderColor: "rgb(29, 155, 240)",
+                },
+              },
+            }}
+          />
 
+          {/* Existing Media Section */}
+          {existingMedia.length > 0 && (
+            <Box sx={{ mt: 2, mb: 2 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{ color: "rgba(255,255,255,0.8)", mb: 1 }}
+              >
+                Ảnh hiện tại:
+              </Typography>
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                {existingMedia.map((mediaUrl, index) => (
+                  <Box
+                    key={index}
+                    sx={{
+                      position: "relative",
+                      width: 100,
+                      height: 100,
+                      borderRadius: "8px",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <img
+                      src={mediaUrl}
+                      alt={`Existing media ${index}`}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                    <IconButton
+                      size="small"
+                      sx={{
+                        position: "absolute",
+                        top: 2,
+                        right: 2,
+                        backgroundColor: "rgba(0,0,0,0.5)",
+                        color: "white",
+                        padding: "4px",
+                        "&:hover": { backgroundColor: "rgba(255,0,0,0.5)" },
+                      }}
+                      onClick={() => handleRemoveExistingMedia(mediaUrl)}
+                    >
+                      <HighlightOffIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          )}
+
+          {/* New Image Preview */}
+          {editPreviewUrl && (
+            <Box sx={{ mt: 2, position: "relative", maxWidth: 300 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{ color: "rgba(255,255,255,0.8)", mb: 1 }}
+              >
+                Ảnh mới:
+              </Typography>
+              <Box sx={{ position: "relative" }}>
+                <img
+                  src={editPreviewUrl}
+                  alt="New media preview"
+                  style={{ width: "100%", borderRadius: "8px" }}
+                />
+                <IconButton
+                  size="small"
+                  sx={{
+                    position: "absolute",
+                    top: 4,
+                    right: 4,
+                    backgroundColor: "rgba(0,0,0,0.5)",
+                    color: "white",
+                    padding: "4px",
+                    "&:hover": { backgroundColor: "rgba(255,0,0,0.5)" },
+                  }}
+                  onClick={handleClearNewImage}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            </Box>
+          )}
+
+          {/* Upload New Image Button */}
+          <Box sx={{ display: "flex", alignItems: "center", mt: 2 }}>
+            <label className="flex items-center space-x-2 rounded-md cursor-pointer">
+              <Button
+                startIcon={<ImageIcon />}
+                sx={{
+                  color: "#1d9bf0",
+                  borderColor: "#1d9bf0",
+                  borderRadius: "20px",
+                  "&:hover": { backgroundColor: "rgba(29, 155, 240, 0.1)" },
+                  textTransform: "none",
+                }}
+                variant="outlined"
+                component="span"
+              >
+                {editPreviewUrl ? "Chọn ảnh khác" : "Thêm ảnh mới"}
+              </Button>
+              <input
+                type="file"
+                name="editImageFile"
+                className="hidden"
+                accept="image/*"
+                onChange={handleSelectEditImage}
+              />
+            </label>
+          </Box>
+        </DialogContent>
+        <DialogActions
+          onClick={handleDialogClick}
+          sx={{ p: 2, borderTop: "1px solid rgba(255,255,255,0.1)" }}
+        >
+          <Button
+            onClick={() => setEditDialogOpen(false)}
+            sx={{
+              color: "rgba(255,255,255,0.7)",
+              "&:hover": {
+                color: "white",
+                backgroundColor: "rgba(255,255,255,0.1)",
+              },
+            }}
+            disabled={submittingEdit}
+          >
+            Hủy
+          </Button>
+          <Button
+            onClick={handleSubmitEdit}
+            variant="contained"
+            disabled={submittingEdit}
+            sx={{
+              bgcolor: "rgb(29, 155, 240)",
+              "&:hover": { bgcolor: "rgb(26, 140, 216)" },
+              fontWeight: "bold",
+              px: 3,
+            }}
+          >
+            {submittingEdit ? "Đang lưu..." : "Lưu thay đổi"}
+          </Button>
+        </DialogActions>
+      </Dialog>
       {/* Comment input */}
       {showCommentInput && (
         <div className="px-4 py-3 border-b border-gray-800">
@@ -1180,7 +1958,6 @@ const TripleTDetails = () => {
           </Box>
         </div>
       )}
-
       {/* Comments section */}
       <div className="flex-1">
         <Typography variant="h6" className="px-4 py-3 font-bold text-white">
@@ -1210,7 +1987,9 @@ const TripleTDetails = () => {
                     <div className="flex items-baseline space-x-1">
                       <span
                         className="font-bold text-white hover:underline cursor-pointer"
-                        onClick={(e) => handleNavigateToProfile(e, comment.userId)}
+                        onClick={(e) =>
+                          handleNavigateToProfile(e, comment.userId)
+                        }
                       >
                         {getUserDisplayName(comment.userId)}
                       </span>
@@ -1222,24 +2001,35 @@ const TripleTDetails = () => {
                         {formatTimeAgo(comment.createdAt)}
                       </span>
                     </div>
-                    
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        justifyContent: "space-between",
+                      }}
+                    >
                       <Typography
-                        sx={{ whiteSpace: "pre-line", color: "white", mt: 1, flex: 1 }}
+                        sx={{
+                          whiteSpace: "pre-line",
+                          color: "white",
+                          mt: 1,
+                          flex: 1,
+                        }}
                       >
                         {comment.content}
                       </Typography>
-                      
+
                       {isOwnComment(comment.userId) && (
-                        <IconButton 
-                          size="small" 
-                          sx={{ 
-                            color: 'rgb(244, 33, 46)',
-                            padding: '4px',
-                            marginLeft: '4px',
-                            marginTop: '2px',
-                            '&:hover': { 
-                              backgroundColor: 'rgba(244, 33, 46, 0.1)' 
+                        <IconButton
+                          size="small"
+                          sx={{
+                            color: "rgb(244, 33, 46)",
+                            padding: "4px",
+                            marginLeft: "4px",
+                            marginTop: "2px",
+                            "&:hover": {
+                              backgroundColor: "rgba(244, 33, 46, 0.1)",
                             },
                           }}
                           disabled={deletingCommentId === comment.id}
@@ -1249,7 +2039,10 @@ const TripleTDetails = () => {
                           }}
                         >
                           {deletingCommentId === comment.id ? (
-                            <CircularProgress size={16} sx={{ color: "#f43f5e" }} />
+                            <CircularProgress
+                              size={16}
+                              sx={{ color: "#f43f5e" }}
+                            />
                           ) : (
                             <DeleteOutlineIcon fontSize="small" />
                           )}

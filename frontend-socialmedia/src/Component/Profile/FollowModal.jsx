@@ -16,6 +16,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { formatAvatarUrl } from '../../utils/formatUrl';
 
 const FollowModal = ({ open, handleClose, userId, initialTab = 'followers' }) => {
   const [tabValue, setTabValue] = useState(initialTab === 'following' ? 1 : 0);
@@ -336,7 +337,7 @@ const FollowModal = ({ open, handleClose, userId, initialTab = 'followers' }) =>
                   onClick={() => handleUserClick(user.id)}
                 >
                   <Avatar 
-                    src={user.avatarUrl || 'https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg'} 
+                    src={formatAvatarUrl(user.avatarUrl)} 
                     alt={user.username}
                     sx={{ width: 40, height: 40, marginRight: 2 }}
                   />

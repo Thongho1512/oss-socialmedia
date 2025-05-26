@@ -27,9 +27,8 @@ const Shared = ({ userId }) => {
         
         if (response.data && response.data.Status === 200) {
           setUserData(response.data.Data1 || response.data.Data);
-        }
-      } catch (error) {
-        console.error("Lỗi khi tải thông tin người dùng:", error);
+        }      } catch (error) {
+        console.error("Error loading user information:", error);
       }
     };
     
@@ -37,14 +36,13 @@ const Shared = ({ userId }) => {
       fetchUserData();
     }
   }, [userId]);
-
   const fetchUserShares = useCallback(async () => {
-    console.log("Đang tải bài viết đã chia sẻ, userId:", userId, "page:", page);
+    console.log("Loading shared posts, userId:", userId, "page:", page);
     setLoading(true);
     try {
       const accessToken = localStorage.getItem("access_token");
       const response = await axios.get(
-        `http://localhost:8080/api/v1/shares?page=${page}&size=5`,
+        `http://localhost:8080/api/v1/shares?page=${page}&size=10`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -124,15 +122,14 @@ const Shared = ({ userId }) => {
                   }
                 );
                 
-                if (altPostResponse.data && altPostResponse.data.Status === 200) {
-                  // Tìm bài viết trong danh sách trả về
+                if (altPostResponse.data && altPostResponse.data.Status === 200) {                  // Find the post in the returned list
                   const foundPost = altPostResponse.data.Data.content?.find(p => p.id === postId) || 
                                     altPostResponse.data.Data.posts?.find(p => p.id === postId) ||
                                     altPostResponse.data.Data.find(p => p.id === postId);
                   
                   if (foundPost) {
                     postsDetails[postId] = foundPost;
-                    console.log(`Lấy thành công thông tin bài viết ${postId} từ endpoint thay thế`);
+                    console.log(`Successfully retrieved post information ${postId} from alternative endpoint`);
                     
                     // Lấy thông tin người đăng bài viết gốc từ endpoint thay thế
                     const originalUserId = foundPost.userId;
@@ -186,23 +183,21 @@ const Shared = ({ userId }) => {
                   mediaUrls = [postDetail.mediaUrl];
                 }
               }
-              
-              // Thông tin người đăng bài viết gốc
+                // Information of original post's author
               const originalUserId = postDetail?.userId;
               const originalUserInfo = userDetails[originalUserId] || null;
               
-              // Đảm bảo rằng originalUserInfo có dữ liệu đầy đủ
+              // Ensure that originalUserInfo has complete data
               const processedOriginalUserInfo = originalUserInfo ? {
                 id: originalUserId,
                 username: originalUserInfo.username || `user_${originalUserId?.substring(0, 5) || "unknown"}`,
-                firstName: originalUserInfo.firstName || "Người",
-                lastName: originalUserInfo.lastName || "Dùng",
-                avatarUrl: originalUserInfo.avatarUrl || "https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg"
-              } : {
+                firstName: originalUserInfo.firstName || "User",
+                lastName: originalUserInfo.lastName || "Unknown",
+                avatarUrl: originalUserInfo.avatarUrl || "https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg"              } : {
                 id: originalUserId || "unknown",
                 username: `user_${originalUserId?.substring(0, 5) || "unknown"}`,
-                firstName: "Người",
-                lastName: "Dùng",
+                firstName: "User",
+                lastName: "Unknown",
                 avatarUrl: "https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg"
               };
               
@@ -219,8 +214,7 @@ const Shared = ({ userId }) => {
                 postId: share.postId,
                 shareId: share.id,
                 shareContent: share.content,
-                content: share.content,
-                originalContent: postDetail?.caption || postDetail?.content || "Nội dung không khả dụng", 
+                content: share.content,                originalContent: postDetail?.caption || postDetail?.content || "Content not available", 
                 isShared: true,
                 isSharedContent: true,
                 userId: share.userId,
@@ -247,7 +241,7 @@ const Shared = ({ userId }) => {
           setUserShares(prevShares => 
             page === 0 ? sharesWithPostDetails : [...prevShares, ...sharesWithPostDetails]
           );
-          setHasMoreShares(shareItems.length === 5);
+          setHasMoreShares(shareItems.length === 10);
         } else {
           if (page === 0) {
             setUserShares([]);
@@ -306,12 +300,12 @@ const Shared = ({ userId }) => {
       // Đảm bảo originalUser có đầy đủ thông tin
       originalUser: post.originalUser || null,
       
-      // Thông tin tương tác
+    // Interaction information
       likesCount: post.likeCount || post.likesCount || 0,
       commentsCount: post.commentCount || post.commentsCount || 0,
       repostsCount: post.shareCount || post.repostsCount || 0,
       
-      // Đảm bảo hiển thị hình ảnh đúng
+      // Ensure correct image display
       mediaUrls: post.mediaUrls && post.mediaUrls.length > 0 ? post.mediaUrls : 
                 (post.media && post.media.length > 0 ? 
                   post.media.map(m => typeof m === 'string' ? m : (m.url || null)).filter(Boolean) : 

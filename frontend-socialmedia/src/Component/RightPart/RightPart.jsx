@@ -5,6 +5,7 @@ import { Box, Typography, Avatar, CircularProgress } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import Messages from "../Messages/Messages";
+import { formatAvatarUrl } from "../../utils/formatUrl";
 
 const RightPart = ({ onUserSelect }) => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -130,7 +131,7 @@ const RightPart = ({ onUserSelect }) => {
             >
               <Avatar
                 alt={user.username}
-                src={user.avatarUrl || "https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg"}
+                src={formatAvatarUrl(user.avatarUrl)}
                 sx={{ width: 48, height: 48, mr: 2 }}
               />
               <div>
@@ -187,13 +188,13 @@ const RightPart = ({ onUserSelect }) => {
 
       {/* Footer */}
       <div className="mt-4 px-4 text-xs text-gray-500">
-        <span className="mr-3 hover:underline cursor-pointer">Terms of Service</span>
-        <span className="mr-3 hover:underline cursor-pointer">Privacy Policy</span>
-        <span className="mr-3 hover:underline cursor-pointer">Cookie Policy</span>
-        <span className="mr-3 hover:underline cursor-pointer">Accessibility</span>
-        <span className="mr-3 hover:underline cursor-pointer">Ads info</span>
-        <span className="mr-3 hover:underline cursor-pointer">More...</span>
-        <div className="mt-1">© 2023 X Corp.</div>
+        <span className="mr-3 hover:underline cursor-pointer"></span>
+        <span className="mr-3 hover:underline cursor-pointer"></span>
+        <span className="mr-3 hover:underline cursor-pointer"></span>
+        <span className="mr-3 hover:underline cursor-pointer"></span>
+        <span className="mr-3 hover:underline cursor-pointer"></span>
+        <span className="mr-3 hover:underline cursor-pointer"></span>
+        <div className="mt-1"></div>
       </div>
 
       {/* Messages Modal */}

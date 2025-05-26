@@ -13,6 +13,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
 import axios from "axios";
+import { formatAvatarUrl } from "../../utils/formatUrl";
 
 const Messages = ({ onClose }) => {
   const [users, setUsers] = useState([]);
@@ -349,19 +350,18 @@ const Messages = ({ onClose }) => {
       {/* Header */}
       <Box className="flex justify-between items-center p-3 border-b border-gray-800 bg-black shadow-sm">
         <Box className="flex items-center">
-          <IconButton 
-            onClick={handleBack} 
+          <IconButton
+            onClick={handleBack}
             className="mr-2"
             size="small"
-            sx={{ color: 'white' }}
+            sx={{ color: "white" }}
           >
             {isMobile && showConversation ? <ArrowBackIcon /> : <CloseIcon />}
           </IconButton>
           <Typography variant="h6" className="font-medium text-base text-white">
-            {selectedUser && showConversation 
+            {selectedUser && showConversation
               ? `${selectedUser.firstName || ""} ${selectedUser.lastName || ""}`
-              : "Tin nhắn"
-            }
+              : "Messages"}
           </Typography>
         </Box>
       </Box>
@@ -375,7 +375,7 @@ const Messages = ({ onClose }) => {
               <Box className="flex-grow overflow-auto bg-black">
                 {loadingUsers ? (
                   <Box className="flex justify-center p-4">
-                    <CircularProgress size={24} sx={{ color: '#1d9bf0' }} />
+                    <CircularProgress size={24} sx={{ color: "#1d9bf0" }} />
                   </Box>
                 ) : users.length === 0 ? (
                   <Box className="p-4 text-center text-gray-400">
@@ -384,13 +384,13 @@ const Messages = ({ onClose }) => {
                 ) : (
                   <Box>
                     {users.map((user) => (
-                      <Box 
+                      <Box
                         key={user.id}
                         onClick={() => setSelectedUser(user)}
                         className="flex items-center p-2 hover:bg-gray-900 cursor-pointer border-b border-gray-800"
                       >
-                        <Avatar 
-                          src={user.avatarUrl || "https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg"} 
+                        <Avatar
+                          src={formatAvatarUrl(user.avatarUrl)}
                           sx={{ width: 32, height: 32 }}
                           className="mr-2"
                         />
@@ -407,7 +407,7 @@ const Messages = ({ onClose }) => {
             </Box>
           ) : (
             // Chat hiện tại
-            <ChatArea 
+            <ChatArea
               selectedUser={selectedUser}
               loading={loading}
               error={error}
@@ -428,7 +428,7 @@ const Messages = ({ onClose }) => {
             <Box className="flex-grow overflow-auto">
               {loadingUsers ? (
                 <Box className="flex justify-center p-4">
-                  <CircularProgress size={24} sx={{ color: '#1d9bf0' }} />
+                  <CircularProgress size={24} sx={{ color: "#1d9bf0" }} />
                 </Box>
               ) : users.length === 0 ? (
                 <Box className="p-4 text-center text-gray-400">
@@ -437,13 +437,13 @@ const Messages = ({ onClose }) => {
               ) : (
                 <Box>
                   {users.map((user) => (
-                    <Box 
+                    <Box
                       key={user.id}
                       onClick={() => setSelectedUser(user)}
-                      className={`flex items-center p-2 cursor-pointer hover:bg-gray-900 ${selectedUser?.id === user.id ? 'bg-gray-900' : ''}`}
+                      className={`flex items-center p-2 cursor-pointer hover:bg-gray-900 ${selectedUser?.id === user.id ? "bg-gray-900" : ""}`}
                     >
-                      <Avatar 
-                        src={user.avatarUrl || "https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg"} 
+                      <Avatar
+                        src={formatAvatarUrl(user.avatarUrl)}
                         sx={{ width: 32, height: 32 }}
                         className="mr-2"
                       />
@@ -462,7 +462,7 @@ const Messages = ({ onClose }) => {
           {/* Chat hiện tại - width increased from w-3/5 to w-2/3 */}
           <Box className="w-2/3 flex flex-col bg-black">
             {selectedUser ? (
-              <ChatArea 
+              <ChatArea
                 selectedUser={selectedUser}
                 loading={loading}
                 error={error}
@@ -476,10 +476,10 @@ const Messages = ({ onClose }) => {
             ) : (
               <Box className="flex-grow flex flex-col items-center justify-center text-gray-400">
                 <Typography className="text-xl font-medium text-gray-300 mb-2">
-                  Tin nhắn của bạn
+                  Your Messages 
                 </Typography>
                 <Typography className="text-center text-gray-400 max-w-sm">
-                  Gửi tin nhắn riêng tư cho bạn bè
+                 Send private messages to your friends
                 </Typography>
               </Box>
             )}
@@ -514,7 +514,7 @@ const ChatArea = ({
       <Box className="flex-grow overflow-auto p-3 bg-black">
         {loading && messageGroups.length === 0 ? (
           <Box className="flex justify-center items-center h-full">
-            <CircularProgress size={24} sx={{ color: '#1d9bf0' }} />
+            <CircularProgress size={24} sx={{ color: "#1d9bf0" }} />
           </Box>
         ) : error ? (
           <Box className="flex justify-center items-center h-full">
@@ -522,15 +522,18 @@ const ChatArea = ({
           </Box>
         ) : messageGroups.length === 0 ? (
           <Box className="flex flex-col justify-center items-center h-full">
-            <Avatar 
-              src={selectedUser.avatarUrl || "https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg"} 
+            <Avatar
+              src={
+                selectedUser.avatarUrl ||
+                "https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg"
+              }
               sx={{ width: 80, height: 80, mb: 2 }}
             />
             <Typography className="font-medium text-white mb-1">
               {`${selectedUser.firstName || ""} ${selectedUser.lastName || ""}`}
             </Typography>
             <Typography className="text-gray-400 text-sm">
-              Bắt đầu cuộc trò chuyện mới
+              Start a new conversation
             </Typography>
           </Box>
         ) : (
@@ -542,21 +545,29 @@ const ChatArea = ({
                     {group.date}
                   </Typography>
                 </Box>
-                
+
                 {group.messages.map((message, messageIndex) => {
                   // Log để debug
                   console.log(`Message ${messageIndex}:`, message);
-                  console.log(`Is current user (${currentUserId === message.senderId}):`, currentUserId, message.senderId);
-                  
+                  console.log(
+                    `Is current user (${currentUserId === message.senderId}):`,
+                    currentUserId,
+                    message.senderId
+                  );
+
                   const isCurrentUser = message.senderId === currentUserId;
-                  const showAvatar = !isCurrentUser && 
-                    (messageIndex === 0 || 
-                    group.messages[messageIndex - 1].senderId !== message.senderId);
-                    
+                  const showAvatar =
+                    !isCurrentUser &&
+                    (messageIndex === 0 ||
+                      group.messages[messageIndex - 1].senderId !==
+                        message.senderId);
+
                   // Check if this is a new message from the sender
-                  const isNewSenderMessage = messageIndex === 0 || 
-                    group.messages[messageIndex - 1].senderId !== message.senderId;
-                    
+                  const isNewSenderMessage =
+                    messageIndex === 0 ||
+                    group.messages[messageIndex - 1].senderId !==
+                      message.senderId;
+
                   return (
                     <Box key={message.id}>
                       {/* Show timestamp only for first message in consecutive messages from same sender */}
@@ -567,28 +578,31 @@ const ChatArea = ({
                           </Typography>
                         </Box>
                       )}
-                      
-                      <Box 
-                        className={`flex items-end ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
+
+                      <Box
+                        className={`flex items-end ${isCurrentUser ? "justify-end" : "justify-start"}`}
                       >
                         {!isCurrentUser && showAvatar && (
                           <Avatar
-                            src={selectedUser?.avatarUrl || "https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg"}
+                            src={
+                              selectedUser?.avatarUrl ||
+                              "https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg"
+                            }
                             sx={{ width: 28, height: 28, mr: 1, mb: 0.5 }}
                           />
-                        )
-}
-                        
+                        )}
+
                         {!isCurrentUser && !showAvatar && (
                           <Box sx={{ width: 28, mr: 1 }} /> // Placeholder để giữ căn lề
-                        )
-}
-                        
-                        <Box 
+                        )}
+
+                        <Box
                           className={`max-w-[75%] ${
-                            isCurrentUser ? 'bg-[#1d9bf0] text-white' : 'bg-[#333639] text-white'
+                            isCurrentUser
+                              ? "bg-[#1d9bf0] text-white"
+                              : "bg-[#333639] text-white"
                           } px-3 py-2 rounded-2xl ${
-                            isCurrentUser ? 'rounded-tr-sm' : 'rounded-tl-sm'
+                            isCurrentUser ? "rounded-tr-sm" : "rounded-tl-sm"
                           }`}
                         >
                           <Typography className="text-sm break-words">
@@ -616,34 +630,34 @@ const ChatArea = ({
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             sx={{
-              '.MuiOutlinedInput-root': {
-                borderRadius: '20px',
-                backgroundColor: '#333639',
-                fontSize: '0.9rem',
-                padding: '2px 8px',
-                color: 'white',
-                '.MuiOutlinedInput-notchedOutline': {
-                  border: 'none'
+              ".MuiOutlinedInput-root": {
+                borderRadius: "20px",
+                backgroundColor: "#333639",
+                fontSize: "0.9rem",
+                padding: "2px 8px",
+                color: "white",
+                ".MuiOutlinedInput-notchedOutline": {
+                  border: "none",
                 },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  border: 'none'
+                "&:hover .MuiOutlinedInput-notchedOutline": {
+                  border: "none",
                 },
-                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                  border: 'none'
-                }
-              }
+                "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                  border: "none",
+                },
+              },
             }}
             InputProps={{
               endAdornment: (
-                <IconButton 
+                <IconButton
                   size="small"
-                  sx={{ color: '#1d9bf0' }}
+                  sx={{ color: "#1d9bf0" }}
                   disabled={!newMessage.trim()}
                   type="submit"
                 >
-                  <SendIcon fontSize="small" sx={{ color: '#1d9bf0' }} />
+                  <SendIcon fontSize="small" sx={{ color: "#1d9bf0" }} />
                 </IconButton>
-              )
+              ),
             }}
           />
         </form>
