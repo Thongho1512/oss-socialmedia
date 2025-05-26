@@ -23,7 +23,7 @@ SENDINBLUE_API_KEY=your_brevo_api_key_here
 
 
 3. Chạy ứng dụng.
-- Chạy ứng dụng bằng mvn tại folder socialmedia.
+- Chạy ứng dụng bằng mvn tại folder backend-socialmedia.
 mvn spring-boot:run
 
 
