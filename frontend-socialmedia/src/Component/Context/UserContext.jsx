@@ -1,7 +1,7 @@
 import { createContext, useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 
-// Tạo instance Axios với cấu hình cơ bản
+// Create Axios instance with basic configuration
 const api = axios.create({
   baseURL: "http://localhost:8080/api/v1",
   headers: {

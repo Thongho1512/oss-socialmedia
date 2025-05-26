@@ -34,6 +34,7 @@ import axios from "axios";
 import Comments from "../Posts/Comments";
 import { formatAvatarUrl } from "../../utils/formatUrl";
 import { UserContext } from "../Context/UserContext";
+import ShareEditDialog from "../Posts/ShareEditDialog";
 
 const TripleTCard = ({ post, profileUserId }) => {
   const navigate = useNavigate();
@@ -56,13 +57,14 @@ const TripleTCard = ({ post, profileUserId }) => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [formattedTimeAgo, setFormattedTimeAgo] = useState("recently");
-  
-  const [likesDialogOpen, setLikesDialogOpen] = useState(false);
+    const [likesDialogOpen, setLikesDialogOpen] = useState(false);
   const [likesList, setLikesList] = useState([]);
   const [likesUsers, setLikesUsers] = useState({});
   const [loadingLikes, setLoadingLikes] = useState(false);
   
   const [postOwnerData, setPostOwnerData] = useState(null);
+  
+  const [shareEditDialogOpen, setShareEditDialogOpen] = useState(false);
   
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editedCaption, setEditedCaption] = useState("");
@@ -124,6 +126,30 @@ const TripleTCard = ({ post, profileUserId }) => {
     
     fetchCurrentUser();
   }, []);
+  const handleShareUpdate = (updatedShare) => {
+    console.log("Share updated:", updatedShare);
+    // Update the post in the UI with the new share content
+    if (updatedShare && updatedShare.id) {
+      // Update share content in the current post
+      post.shareContent = updatedShare.content;
+      post.content = updatedShare.content;
+      
+      // Force re-render
+      const newContent = updatedShare.content;
+      setShareContent(newContent);
+      
+      // Show success notification
+      alert("Đã cập nhật chia sẻ thành công!");
+    }
+  };
+    const handleEditShare = (e) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    setShareEditDialogOpen(true);
+    handleMenuClose(e);
+  };
 
   const handleMenuClick = (e) => {
     e.stopPropagation();
@@ -212,27 +238,23 @@ const TripleTCard = ({ post, profileUserId }) => {
             "Content-Type": "multipart/form-data",
           },
         }
-      );
-
-      if (response.data && response.data.Status === 200) {
-        alert("Bài viết đã được cập nhật thành công!");
+      );      if (response.data && response.data.Status === 200) {
+        alert("Post has been updated successfully!");
         setEditDialogOpen(false);
         
         setSelectedEditImage(null);
         setEditPreviewUrl("");
         
-        window.location.reload();
-      } else {
-        console.error("API cập nhật bài viết thất bại:", response.data);
-        alert("Không thể cập nhật bài viết, vui lòng thử lại sau!");
-      }
-    } catch (error) {
-      console.error("Lỗi khi cập nhật bài viết:", error);
+        window.location.reload();      } else {
+        console.error("API post update failed:", response.data);
+        alert("Could not update the post, please try again later!");
+      }    } catch (error) {
+      console.error("Error updating post:", error);
       if (error.response) {
         console.error("Response data:", error.response.data);
         console.error("Response status:", error.response.status);
       }
-      alert("Không thể cập nhật bài viết, vui lòng thử lại sau!");
+      alert("Could not update the post, please try again later!");
     } finally {
       setSubmittingEdit(false);
     }
@@ -263,14 +285,13 @@ const TripleTCard = ({ post, profileUserId }) => {
     setSelectedEditImage(null);
     setEditPreviewUrl("");
   };
-
   const handleDeleteShare = async () => {
     try {
       setDeleteLoading(true);
       const accessToken = localStorage.getItem("access_token");
       
       if (!accessToken) {
-        console.error("Không tìm thấy access token");
+        console.error("Access token not found");
         return;
       }
       
@@ -381,9 +402,8 @@ const TripleTCard = ({ post, profileUserId }) => {
     try {
       const accessToken = localStorage.getItem("access_token");
       const userId = post.userId || post.user?.id;
-      
-      if (!userId || !accessToken) {
-        console.error("Không có đủ thông tin để tải dữ liệu chủ bài viết");
+        if (!userId || !accessToken) {
+        console.error("Not enough information to load post owner data");
         return;
       }
       
@@ -408,9 +428,8 @@ const TripleTCard = ({ post, profileUserId }) => {
   if (!post) return null;
 
   const userInfo = userData || post.user || {};
-  const displayName = (userInfo.firstName && userInfo.lastName) 
-    ? `${userInfo.firstName} ${userInfo.lastName}` 
-    : userInfo.username || post.userName || "Người dùng";
+  const displayName = (userInfo.firstName && userInfo.lastName)    ? `${userInfo.firstName} ${userInfo.lastName}` 
+    : userInfo.username || post.userName || "User";
   
   const username = userInfo.username || post.userName || "user";
   const userId = post.userId || userInfo.id;
@@ -793,9 +812,8 @@ const TripleTCard = ({ post, profileUserId }) => {
   };
 
   const mediaArray = getMediaArray();
-
   const handleImageError = (e) => {
-    console.error("Lỗi tải hình ảnh: Không thể hiển thị hình ảnh");
+    console.error("Image loading error: Unable to display image");
 
     try {
       e.target.onerror = null; 
@@ -804,7 +822,7 @@ const TripleTCard = ({ post, profileUserId }) => {
       e.target.src = fallbackImageUrl;
       e.target.classList.add("image-error");
     } catch (error) {
-      console.error("Lỗi khi xử lý ảnh bị lỗi:", error.message);
+      console.error("Error handling failed image:", error.message);
     }
   };
 
@@ -1011,54 +1029,52 @@ const TripleTCard = ({ post, profileUserId }) => {
   };
 
   return (
-    <div 
+    <div
       className="border-b border-gray-800 hover:bg-gray-900/30 transition-colors cursor-pointer px-4 py-3"
       onClick={handlePostClick}
     >
       <div className="flex space-x-3">
         <div onClick={(e) => handleNavigateToProfile(e, userId)}>
-          <Avatar 
-            src={avatarUrl} 
+          <Avatar
+            src={avatarUrl}
             alt={username}
             sx={{ width: 40, height: 40 }}
           />
         </div>
-        
+
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <div className="flex items-baseline space-x-1 mb-0.5">
-              <span 
+              <span
                 className="font-bold text-white hover:underline"
                 onClick={(e) => handleNavigateToProfile(e, userId)}
               >
                 {displayName}
               </span>
-              <span className="text-gray-500 text-sm">
-                @{username}
-              </span>
+              <span className="text-gray-500 text-sm">@{username}</span>
             </div>
-            
+
             {(isCurrentUserPost || isSharedPost) && (
               <IconButton
                 aria-label="more"
                 id={`post-menu-button-${post.id}`}
-                aria-controls={isMenuOpen ? 'post-menu' : undefined}
+                aria-controls={isMenuOpen ? "post-menu" : undefined}
                 aria-haspopup="true"
-                aria-expanded={isMenuOpen ? 'true' : undefined}
+                aria-expanded={isMenuOpen ? "true" : undefined}
                 onClick={handleMenuClick}
-                sx={{ 
-                  padding: '4px',
-                  color: 'rgb(113, 118, 123)',
-                  '&:hover': { 
-                    backgroundColor: 'rgba(29, 155, 240, 0.1)',
-                    color: 'rgb(29, 155, 240)'
-                  }
+                sx={{
+                  padding: "4px",
+                  color: "rgb(113, 118, 123)",
+                  "&:hover": {
+                    backgroundColor: "rgba(29, 155, 240, 0.1)",
+                    color: "rgb(29, 155, 240)",
+                  },
                 }}
               >
                 <MoreHorizIcon fontSize="small" />
               </IconButton>
             )}
-            
+
             <Menu
               id="post-menu"
               anchorEl={menuAnchorEl}
@@ -1067,81 +1083,95 @@ const TripleTCard = ({ post, profileUserId }) => {
               onClick={(e) => e.stopPropagation()}
               PaperProps={{
                 sx: {
-                  backgroundColor: '#15202b',
-                  color: 'white',
-                  boxShadow: '0px 5px 15px rgba(0, 0, 0, 0.3)',
-                  '& .MuiMenuItem-root': {
-                    fontSize: '14px',
-                    padding: '8px 16px'
-                  }
-                }
+                  backgroundColor: "#15202b",
+                  color: "white",
+                  boxShadow: "0px 5px 15px rgba(0, 0, 0, 0.3)",
+                  "& .MuiMenuItem-root": {
+                    fontSize: "14px",
+                    padding: "8px 16px",
+                  },
+                },
               }}
-              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+              transformOrigin={{ horizontal: "right", vertical: "top" }}
+              anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
             >
               {isCurrentUserPost && !isSharedPost && (
-                <MenuItem 
+                <MenuItem
                   onClick={handleEditDialogOpen}
                   sx={{
-                    color: 'rgb(29, 155, 240)',
-                    '&:hover': { backgroundColor: 'rgba(29, 155, 240, 0.1)' }
+                    color: "rgb(29, 155, 240)",
+                    "&:hover": { backgroundColor: "rgba(29, 155, 240, 0.1)" },
                   }}
                 >
-                  <ListItemIcon sx={{ color: 'rgb(29, 155, 240)' }}>
+                  <ListItemIcon sx={{ color: "rgb(29, 155, 240)" }}>
                     <EditIcon fontSize="small" />
                   </ListItemIcon>
-                  <ListItemText>Sửa bài viết</ListItemText>
+                  <ListItemText>Edit Post</ListItemText>
                 </MenuItem>
               )}
-              
+              {isSharedPost && isCurrentUserPost && (
+                <MenuItem
+                  onClick={handleEditShare}
+                  sx={{
+                    color: "rgb(29, 155, 240)",
+                    "&:hover": { backgroundColor: "rgba(29, 155, 240, 0.1)" },
+                  }}
+                >
+                  <ListItemIcon sx={{ color: "rgb(29, 155, 240)" }}>
+                    <EditIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>Edit Post</ListItemText>
+                </MenuItem>
+              )}
+
               {isSharedPost && (
-                <MenuItem 
+                <MenuItem
                   onClick={(e) => {
                     e.stopPropagation();
                     handleMenuClose(e);
                     setDeleteDialogOpen(true);
                   }}
                   sx={{
-                    color: '#ff4081',
-                    '&:hover': { backgroundColor: 'rgba(255, 64, 129, 0.1)' }
+                    color: "#ff4081",
+                    "&:hover": { backgroundColor: "rgba(255, 64, 129, 0.1)" },
                   }}
                 >
-                  <ListItemIcon sx={{ color: '#ff4081' }}>
+                  <ListItemIcon sx={{ color: "#ff4081" }}>
                     <DeleteOutlineIcon fontSize="small" />
                   </ListItemIcon>
                   <ListItemText>Xóa chia sẻ</ListItemText>
                 </MenuItem>
               )}
-              
+
               {isCurrentUserPost && !isSharedPost && (
-                <MenuItem 
+                <MenuItem
                   onClick={(e) => {
                     e.stopPropagation();
                     handleMenuClose(e);
                     setDeletePostDialogOpen(true);
                   }}
                   sx={{
-                    color: '#ff4081',
-                    '&:hover': { backgroundColor: 'rgba(255, 64, 129, 0.1)' }
+                    color: "#ff4081",
+                    "&:hover": { backgroundColor: "rgba(255, 64, 129, 0.1)" },
                   }}
                 >
-                  <ListItemIcon sx={{ color: '#ff4081' }}>
+                  <ListItemIcon sx={{ color: "#ff4081" }}>
                     <DeleteOutlineIcon fontSize="small" />
                   </ListItemIcon>
-                  <ListItemText>Xóa bài viết</ListItemText>
+                  <ListItemText>Delete Post</ListItemText>
                 </MenuItem>
               )}
             </Menu>
           </div>
-          
+
           {post?.content && (
-            <Typography sx={{ whiteSpace: 'pre-line', mb: 2, color: 'white' }}>
-              {showFullContent || !contentIsTruncated 
+            <Typography sx={{ whiteSpace: "pre-line", mb: 2, color: "white" }}>
+              {showFullContent || !contentIsTruncated
                 ? post.content
                 : `${post.content.slice(0, MAX_CONTENT_LENGTH)}...`}
-                
+
               {contentIsTruncated && (
-                <span 
+                <span
                   className="text-blue-400 hover:text-blue-300 ml-1 cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -1153,15 +1183,15 @@ const TripleTCard = ({ post, profileUserId }) => {
               )}
             </Typography>
           )}
-          
+
           {isSharedPost && (
-            <Paper 
-              variant="outlined" 
-              className="my-2 overflow-hidden" 
-              sx={{ 
-                backgroundColor: 'rgba(39, 51, 64, 0.5)', 
-                borderColor: 'rgba(66, 83, 100, 0.5)',
-                borderRadius: '12px'
+            <Paper
+              variant="outlined"
+              className="my-2 overflow-hidden"
+              sx={{
+                backgroundColor: "rgba(39, 51, 64, 0.5)",
+                borderColor: "rgba(66, 83, 100, 0.5)",
+                borderRadius: "12px",
               }}
               onClick={(e) => {
                 e.stopPropagation();
@@ -1171,14 +1201,18 @@ const TripleTCard = ({ post, profileUserId }) => {
               <Box className="p-3">
                 {post.originalUser && (
                   <Box className="flex items-center mb-2">
-                    <Avatar 
-                      src={post.originalUser?.avatarUrl} 
+                    <Avatar
+                      src={post.originalUser?.avatarUrl}
                       alt={post.originalUser?.username || "user"}
                       sx={{ width: 28, height: 28, marginRight: 1 }}
                     />
                     <Box>
-                      <Typography variant="subtitle2" className="text-gray-300 font-medium">
-                        {post.originalUser?.firstName || ""} {post.originalUser?.lastName || ""}
+                      <Typography
+                        variant="subtitle2"
+                        className="text-gray-300 font-medium"
+                      >
+                        {post.originalUser?.firstName || ""}{" "}
+                        {post.originalUser?.lastName || ""}
                       </Typography>
                       <Typography variant="caption" className="text-gray-500">
                         @{post.originalUser?.username || "user"}
@@ -1186,15 +1220,22 @@ const TripleTCard = ({ post, profileUserId }) => {
                     </Box>
                   </Box>
                 )}
-                
+
                 {post.originalContent && (
-                  <Typography sx={{ whiteSpace: 'pre-line', color: 'white', fontSize: '0.95rem', mb: 2 }}>
-                    {showFullOriginalContent || !originalContentIsTruncated 
+                  <Typography
+                    sx={{
+                      whiteSpace: "pre-line",
+                      color: "white",
+                      fontSize: "0.95rem",
+                      mb: 2,
+                    }}
+                  >
+                    {showFullOriginalContent || !originalContentIsTruncated
                       ? post.originalContent
                       : `${post.originalContent.slice(0, MAX_CONTENT_LENGTH)}...`}
-                      
+
                     {originalContentIsTruncated && (
-                      <span 
+                      <span
                         className="text-blue-400 hover:text-blue-300 ml-1 cursor-pointer"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1206,64 +1247,74 @@ const TripleTCard = ({ post, profileUserId }) => {
                     )}
                   </Typography>
                 )}
-                
+
                 {mediaArray.length > 0 && (
-                  <div className={`rounded-xl overflow-hidden ${mediaArray.length > 1 ? 'grid grid-cols-2 gap-1' : ''}`}>
+                  <div
+                    className={`rounded-xl overflow-hidden ${mediaArray.length > 1 ? "grid grid-cols-2 gap-1" : ""}`}
+                  >
                     {mediaArray.length === 1 ? (
                       mediaArray[0].type === "video" ? (
                         <div className="relative group">
-                          <video 
-                            src={mediaArray[0].url} 
-                            controls 
+                          <video
+                            src={mediaArray[0].url}
+                            controls
                             controlsList="nodownload"
                             className="w-full h-auto max-h-[300px] object-contain"
                             poster={`${process.env.PUBLIC_URL || ""}/logo.png`}
-                            onClick={e => e.stopPropagation()}
+                            onClick={(e) => e.stopPropagation()}
                           />
                           <div className="absolute top-2 right-2 bg-black bg-opacity-60 rounded-full p-1">
-                            <VideocamIcon className="text-white" fontSize="small" />
+                            <VideocamIcon
+                              className="text-white"
+                              fontSize="small"
+                            />
                           </div>
                         </div>
                       ) : (
-                        <img 
-                          src={mediaArray[0].url} 
-                          alt="Post media" 
+                        <img
+                          src={mediaArray[0].url}
+                          alt="Post media"
                           className="w-full h-auto max-h-[300px] object-contain"
                           onError={handleImageError}
                         />
                       )
                     ) : (
                       mediaArray.slice(0, 4).map((media, index) => (
-                        <div 
-                          key={index} 
-                          className={`${mediaArray.length === 3 && index === 0 ? 'col-span-2' : ''} 
-                                    ${mediaArray.length > 4 && index === 3 ? 'relative' : ''}`}
+                        <div
+                          key={index}
+                          className={`${mediaArray.length === 3 && index === 0 ? "col-span-2" : ""} 
+                                    ${mediaArray.length > 4 && index === 3 ? "relative" : ""}`}
                         >
                           {media.type === "video" ? (
                             <div className="relative h-48 group">
-                              <video 
-                                src={media.url} 
-                                controls 
+                              <video
+                                src={media.url}
+                                controls
                                 controlsList="nodownload"
                                 className="w-full h-48 object-cover"
                                 poster={`${process.env.PUBLIC_URL || ""}/logo.png`}
-                                onClick={e => e.stopPropagation()}
+                                onClick={(e) => e.stopPropagation()}
                               />
                               <div className="absolute top-2 right-2 bg-black bg-opacity-60 rounded-full p-1">
-                                <VideocamIcon className="text-white" fontSize="small" />
+                                <VideocamIcon
+                                  className="text-white"
+                                  fontSize="small"
+                                />
                               </div>
                             </div>
                           ) : (
-                            <img 
-                              src={media.url || ''} 
-                              alt={`Media ${index + 1}`} 
+                            <img
+                              src={media.url || ""}
+                              alt={`Media ${index + 1}`}
                               className="w-full h-48 object-cover"
                               onError={handleImageError}
                             />
                           )}
                           {mediaArray.length > 4 && index === 3 && (
                             <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                              <span className="text-white text-2xl font-bold">+{mediaArray.length - 4}</span>
+                              <span className="text-white text-2xl font-bold">
+                                +{mediaArray.length - 4}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -1274,96 +1325,125 @@ const TripleTCard = ({ post, profileUserId }) => {
               </Box>
             </Paper>
           )}
-          
+
           {!isSharedPost && renderMedia()}
-          
+
           <div className="flex justify-between mt-3 max-w-md">
             <div className="flex items-center group">
-              <IconButton 
-                size="small" 
+              <IconButton
+                size="small"
                 onClick={handleComment}
-                sx={{ 
-                  color: showComments ? 'rgb(29, 155, 240)' : 'rgb(113, 118, 123)',
-                  '&:hover': { color: 'rgb(29, 155, 240)', bgcolor: 'rgba(29, 155, 240, 0.1)' }
+                sx={{
+                  color: showComments
+                    ? "rgb(29, 155, 240)"
+                    : "rgb(113, 118, 123)",
+                  "&:hover": {
+                    color: "rgb(29, 155, 240)",
+                    bgcolor: "rgba(29, 155, 240, 0.1)",
+                  },
                 }}
               >
                 <ChatBubbleOutlineIcon fontSize="small" />
               </IconButton>
-              <span className={`text-xs ml-1 ${showComments ? 'text-blue-400' : 'text-gray-500'} group-hover:text-blue-400`}>
+              <span
+                className={`text-xs ml-1 ${showComments ? "text-blue-400" : "text-gray-500"} group-hover:text-blue-400`}
+              >
                 {post.commentsCount || post.commentCount || 0}
               </span>
             </div>
-            
+
             <div className="flex items-center group">
-              <IconButton 
-                size="small" 
+              <IconButton
+                size="small"
                 onClick={handleLike}
-                sx={{ 
-                  color: liked ? 'rgb(249, 24, 128)' : 'rgb(113, 118, 123)',
-                  '&:hover': { color: 'rgb(249, 24, 128)', bgcolor: 'rgba(249, 24, 128, 0.1)' }
+                sx={{
+                  color: liked ? "rgb(249, 24, 128)" : "rgb(113, 118, 123)",
+                  "&:hover": {
+                    color: "rgb(249, 24, 128)",
+                    bgcolor: "rgba(249, 24, 128, 0.1)",
+                  },
                 }}
                 disabled={isLoading}
               >
-                {liked ? <FavoriteIcon fontSize="small" /> : <FavoriteBorderIcon fontSize="small" />}
+                {liked ? (
+                  <FavoriteIcon fontSize="small" />
+                ) : (
+                  <FavoriteBorderIcon fontSize="small" />
+                )}
               </IconButton>
-              <span 
-                className={`text-xs ml-1 ${liked ? 'text-pink-500' : 'text-gray-500'} group-hover:text-pink-500 cursor-pointer`}
+              <span
+                className={`text-xs ml-1 ${liked ? "text-pink-500" : "text-gray-500"} group-hover:text-pink-500 cursor-pointer`}
                 onClick={handleShowLikes}
               >
                 {likesCount}
               </span>
             </div>
-            
+
             <div>
-              <IconButton 
-                size="small" 
+              <IconButton
+                size="small"
                 onClick={handleShare}
-                sx={{ 
-                  color: 'rgb(113, 118, 123)',
-                  '&:hover': { color: 'rgb(29, 155, 240)', bgcolor: 'rgba(29, 155, 240, 0.1)' }
+                sx={{
+                  color: "rgb(113, 118, 123)",
+                  "&:hover": {
+                    color: "rgb(29, 155, 240)",
+                    bgcolor: "rgba(29, 155, 240, 0.1)",
+                  },
                 }}
               >
                 <IosShareIcon fontSize="small" />
               </IconButton>
             </div>
           </div>
-          
+
           <Collapse in={showComments} timeout="auto" unmountOnExit>
-            <Box 
-              className="mt-3 pt-2 border-t border-gray-800" 
+            <Box
+              className="mt-3 pt-2 border-t border-gray-800"
               onClick={(e) => e.stopPropagation()}
             >
-              <Comments postId={post.postId || post.id} inFeed={true} maxComments={3} />
+              <Comments
+                postId={post.postId || post.id}
+                inFeed={true}
+                maxComments={3}
+              />
             </Box>
           </Collapse>
         </div>
       </div>
-
-      <Dialog 
-        open={editDialogOpen} 
+      <Dialog
+        open={editDialogOpen}
         onClose={() => setEditDialogOpen(false)}
         fullWidth
         maxWidth="sm"
         PaperProps={{
           style: {
-            borderRadius: '12px',
-            backgroundColor: '#15202b',
-            color: 'white'
-          }
+            borderRadius: "12px",
+            backgroundColor: "#15202b",
+            color: "white",
+          },
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <DialogTitle sx={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-              Sửa bài viết
+        <DialogTitle sx={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+              Edit Post
             </Typography>
             <IconButton
               aria-label="close"
               onClick={() => setEditDialogOpen(false)}
               sx={{
-                color: 'rgba(255,255,255,0.7)',
-                '&:hover': { color: 'white', backgroundColor: 'rgba(255,255,255,0.1)' }
+                color: "rgba(255,255,255,0.7)",
+                "&:hover": {
+                  color: "white",
+                  backgroundColor: "rgba(255,255,255,0.1)",
+                },
               }}
             >
               <CloseIcon />
@@ -1375,7 +1455,7 @@ const TripleTCard = ({ post, profileUserId }) => {
             autoFocus
             margin="dense"
             id="editCaption"
-            label="Nội dung bài viết"
+            label="Post Caption"
             type="text"
             fullWidth
             variant="outlined"
@@ -1384,59 +1464,66 @@ const TripleTCard = ({ post, profileUserId }) => {
             value={editedCaption}
             onChange={(e) => setEditedCaption(e.target.value)}
             InputProps={{
-              style: { color: 'white' }
+              style: { color: "white" },
             }}
             InputLabelProps={{
-              style: { color: 'rgba(255,255,255,0.7)' }
+              style: { color: "rgba(255,255,255,0.7)" },
             }}
             sx={{
               mb: 2,
-              '& .MuiOutlinedInput-root': {
-                '& fieldset': {
-                  borderColor: 'rgba(255,255,255,0.3)',
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": {
+                  borderColor: "rgba(255,255,255,0.3)",
                 },
-                '&:hover fieldset': {
-                  borderColor: 'rgba(255,255,255,0.5)',
+                "&:hover fieldset": {
+                  borderColor: "rgba(255,255,255,0.5)",
                 },
-                '&.Mui-focused fieldset': {
-                  borderColor: 'rgb(29, 155, 240)',
-                }
-              }
+                "&.Mui-focused fieldset": {
+                  borderColor: "rgb(29, 155, 240)",
+                },
+              },
             }}
           />
-          
+
           {existingMedia.length > 0 && (
             <Box sx={{ mt: 2, mb: 2 }}>
-              <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.8)', mb: 1 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{ color: "rgba(255,255,255,0.8)", mb: 1 }}
+              >
                 Ảnh hiện tại:
               </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
                 {existingMedia.map((mediaUrl, index) => (
-                  <Box 
-                    key={index} 
-                    sx={{ 
-                      position: 'relative', 
-                      width: 100, 
-                      height: 100, 
-                      borderRadius: '8px',
-                      overflow: 'hidden'
+                  <Box
+                    key={index}
+                    sx={{
+                      position: "relative",
+                      width: 100,
+                      height: 100,
+                      borderRadius: "8px",
+                      overflow: "hidden",
                     }}
                   >
-                    <img 
-                      src={mediaUrl} 
-                      alt={`Existing media ${index}`} 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    <img
+                      src={mediaUrl}
+                      alt={`Existing media ${index}`}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
                     />
                     <IconButton
                       size="small"
                       sx={{
-                        position: 'absolute',
+                        position: "absolute",
                         top: 2,
                         right: 2,
-                        backgroundColor: 'rgba(0,0,0,0.5)',
-                        color: 'white',
-                        padding: '4px',
-                        '&:hover': { backgroundColor: 'rgba(255,0,0,0.5)' }
+                        backgroundColor: "rgba(0,0,0,0.5)",
+                        color: "white",
+                        padding: "4px",
+                        "&:hover": { backgroundColor: "rgba(255,0,0,0.5)" },
                       }}
                       onClick={() => handleRemoveExistingMedia(mediaUrl)}
                     >
@@ -1447,36 +1534,41 @@ const TripleTCard = ({ post, profileUserId }) => {
               </Box>
             </Box>
           )}
-          
+
           {editPreviewUrl && selectedEditImage && (
-            <Box sx={{ mt: 2, position: 'relative', maxWidth: 300 }}>
-              <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.8)', mb: 1 }}>
-                {selectedEditImage.type.startsWith('video') ? 'Video mới:' : 'Ảnh mới:'}
+            <Box sx={{ mt: 2, position: "relative", maxWidth: 300 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{ color: "rgba(255,255,255,0.8)", mb: 1 }}
+              >
+                {selectedEditImage.type.startsWith("video")
+                  ? "Video mới:"
+                  : "Ảnh mới:"}
               </Typography>
-              <Box sx={{ position: 'relative' }}>
-                {selectedEditImage.type.startsWith('video') ? (
-                  <video 
-                    src={editPreviewUrl} 
+              <Box sx={{ position: "relative" }}>
+                {selectedEditImage.type.startsWith("video") ? (
+                  <video
+                    src={editPreviewUrl}
                     controls
-                    style={{ width: '100%', borderRadius: '8px' }}
+                    style={{ width: "100%", borderRadius: "8px" }}
                   />
                 ) : (
-                  <img 
-                    src={editPreviewUrl} 
-                    alt="New media preview" 
-                    style={{ width: '100%', borderRadius: '8px' }}
+                  <img
+                    src={editPreviewUrl}
+                    alt="New media preview"
+                    style={{ width: "100%", borderRadius: "8px" }}
                   />
                 )}
                 <IconButton
                   size="small"
                   sx={{
-                    position: 'absolute',
+                    position: "absolute",
                     top: 4,
                     right: 4,
-                    backgroundColor: 'rgba(0,0,0,0.5)',
-                    color: 'white',
-                    padding: '4px',
-                    '&:hover': { backgroundColor: 'rgba(255,0,0,0.5)' }
+                    backgroundColor: "rgba(0,0,0,0.5)",
+                    color: "white",
+                    padding: "4px",
+                    "&:hover": { backgroundColor: "rgba(255,0,0,0.5)" },
                   }}
                   onClick={handleClearNewImage}
                 >
@@ -1485,22 +1577,22 @@ const TripleTCard = ({ post, profileUserId }) => {
               </Box>
             </Box>
           )}
-          
-          <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+
+          <Box sx={{ display: "flex", alignItems: "center", mt: 2 }}>
             <label className="flex items-center space-x-2 rounded-md cursor-pointer">
               <Button
                 startIcon={<ImageIcon />}
                 sx={{
-                  color: '#1d9bf0',
-                  borderColor: '#1d9bf0',
-                  borderRadius: '20px',
-                  '&:hover': { backgroundColor: 'rgba(29, 155, 240, 0.1)' },
-                  textTransform: 'none'
+                  color: "#1d9bf0",
+                  borderColor: "#1d9bf0",
+                  borderRadius: "20px",
+                  "&:hover": { backgroundColor: "rgba(29, 155, 240, 0.1)" },
+                  textTransform: "none",
                 }}
                 variant="outlined"
                 component="span"
               >
-                {editPreviewUrl ? 'Chọn file khác' : 'Thêm ảnh/video mới'}
+                {editPreviewUrl ? "Chọn file khác" : "Thêm ảnh/video mới"}
               </Button>
               <input
                 type="file"
@@ -1512,57 +1604,73 @@ const TripleTCard = ({ post, profileUserId }) => {
             </label>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 2, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-          <Button 
-            onClick={() => setEditDialogOpen(false)} 
-            sx={{ 
-              color: 'rgba(255,255,255,0.7)', 
-              '&:hover': { color: 'white', backgroundColor: 'rgba(255,255,255,0.1)' } 
+        <DialogActions
+          sx={{ p: 2, borderTop: "1px solid rgba(255,255,255,0.1)" }}
+        >
+          <Button
+            onClick={() => setEditDialogOpen(false)}
+            sx={{
+              color: "rgba(255,255,255,0.7)",
+              "&:hover": {
+                color: "white",
+                backgroundColor: "rgba(255,255,255,0.1)",
+              },
             }}
             disabled={submittingEdit}
           >
             Hủy
           </Button>
-          <Button 
-            onClick={handleSubmitEdit} 
-            variant="contained" 
+          <Button
+            onClick={handleSubmitEdit}
+            variant="contained"
             disabled={submittingEdit}
-            sx={{ 
-              bgcolor: 'rgb(29, 155, 240)', 
-              '&:hover': { bgcolor: 'rgb(26, 140, 216)' },
-              fontWeight: 'bold',
-              px: 3
+            sx={{
+              bgcolor: "rgb(29, 155, 240)",
+              "&:hover": { bgcolor: "rgb(26, 140, 216)" },
+              fontWeight: "bold",
+              px: 3,
             }}
           >
-            {submittingEdit ? 'Đang lưu...' : 'Lưu thay đổi'}
+            {submittingEdit ? "Đang lưu..." : "Lưu thay đổi"}
           </Button>
         </DialogActions>
       </Dialog>
-
-      <Dialog 
-        open={shareDialogOpen} 
+      <Dialog
+        open={shareDialogOpen}
         onClose={() => setShareDialogOpen(false)}
         fullWidth
         maxWidth="sm"
         PaperProps={{
           style: {
-            borderRadius: '12px',
-            backgroundColor: '#15202b',
-            color: 'white'
-          }
+            borderRadius: "12px",
+            backgroundColor: "#15202b",
+            color: "white",
+          },
         }}
       >
-        <DialogTitle onClick={handleDialogClick} sx={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-              Chia sẻ bài viết
+        <DialogTitle
+          onClick={handleDialogClick}
+          sx={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+              Share Post
             </Typography>
             <IconButton
               aria-label="close"
               onClick={() => setShareDialogOpen(false)}
               sx={{
-                color: 'rgba(255,255,255,0.7)',
-                '&:hover': { color: 'white', backgroundColor: 'rgba(255,255,255,0.1)' }
+                color: "rgba(255,255,255,0.7)",
+                "&:hover": {
+                  color: "white",
+                  backgroundColor: "rgba(255,255,255,0.1)",
+                },
               }}
             >
               <CloseIcon />
@@ -1574,7 +1682,7 @@ const TripleTCard = ({ post, profileUserId }) => {
             autoFocus
             margin="dense"
             id="shareContent"
-            label="Viết suy nghĩ của bạn về bài viết này..."
+            label="Write your thoughts for this article..."
             type="text"
             fullWidth
             variant="outlined"
@@ -1583,65 +1691,75 @@ const TripleTCard = ({ post, profileUserId }) => {
             value={shareContent}
             onChange={(e) => setShareContent(e.target.value)}
             InputProps={{
-              style: { color: 'white' }
+              style: { color: "white" },
             }}
             InputLabelProps={{
-              style: { color: 'rgba(255,255,255,0.7)' }
+              style: { color: "rgba(255,255,255,0.7)" },
             }}
             sx={{
               mb: 2,
-              '& .MuiOutlinedInput-root': {
-                '& fieldset': {
-                  borderColor: 'rgba(255,255,255,0.3)',
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": {
+                  borderColor: "rgba(255,255,255,0.3)",
                 },
-                '&:hover fieldset': {
-                  borderColor: 'rgba(255,255,255,0.5)',
+                "&:hover fieldset": {
+                  borderColor: "rgba(255,255,255,0.5)",
                 },
-                '&.Mui-focused fieldset': {
-                  borderColor: 'rgb(29, 155, 240)',
-                }
-              }
+                "&.Mui-focused fieldset": {
+                  borderColor: "rgb(29, 155, 240)",
+                },
+              },
             }}
           />
-          
-          <Paper 
-            variant="outlined" 
-            className="mt-4 overflow-hidden" 
-            sx={{ 
-              backgroundColor: 'rgba(39, 51, 64, 0.7)', 
-              borderColor: 'rgba(66, 83, 100, 0.7)',
-              borderRadius: '12px'
+
+          <Paper
+            variant="outlined"
+            className="mt-4 overflow-hidden"
+            sx={{
+              backgroundColor: "rgba(39, 51, 64, 0.7)",
+              borderColor: "rgba(66, 83, 100, 0.7)",
+              borderRadius: "12px",
             }}
           >
             <Box className="p-4">
               <Box className="mb-3">
-                <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: '500' }}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{ color: "white", fontWeight: "500" }}
+                >
                   {getPostOwnerName()}
                 </Typography>
               </Box>
-              
-              <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.9)', mb: 2, whiteSpace: 'pre-line' }}>
-                {(post.content || post.originalContent || "").length > 150 
+
+              <Typography
+                variant="body1"
+                sx={{
+                  color: "rgba(255,255,255,0.9)",
+                  mb: 2,
+                  whiteSpace: "pre-line",
+                }}
+              >
+                {(post.content || post.originalContent || "").length > 150
                   ? `${(post.content || post.originalContent || "").substring(0, 150)}...`
-                  : (post.content || post.originalContent || "")}
+                  : post.content || post.originalContent || ""}
               </Typography>
-              
+
               {mediaArray.length > 0 && (
-                <Box 
-                  className="overflow-hidden rounded-lg" 
-                  sx={{ 
-                    width: '100%', 
-                    height: 'auto', 
+                <Box
+                  className="overflow-hidden rounded-lg"
+                  sx={{
+                    width: "100%",
+                    height: "auto",
                     maxHeight: 200,
-                    mb: 1 
+                    mb: 1,
                   }}
                 >
                   {mediaArray[0].type === "video" ? (
                     <div className="relative">
-                      <video 
+                      <video
                         src={mediaArray[0].url}
                         className="w-full h-full object-cover"
-                        style={{ borderRadius: '8px' }}
+                        style={{ borderRadius: "8px" }}
                         poster={`${process.env.PUBLIC_URL || ""}/logo.png`}
                         muted
                       />
@@ -1650,194 +1768,260 @@ const TripleTCard = ({ post, profileUserId }) => {
                       </div>
                     </div>
                   ) : (
-                    <img 
-                      src={mediaArray[0].url} 
-                      alt="Preview" 
+                    <img
+                      src={mediaArray[0].url}
+                      alt="Preview"
                       className="w-full h-full object-cover"
                       onError={handleImageError}
-                      style={{ borderRadius: '8px' }}
+                      style={{ borderRadius: "8px" }}
                     />
                   )}
                 </Box>
               )}
-              
-              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', display: 'block', mt: 1 }}>
+
+              <Typography
+                variant="caption"
+                sx={{ color: "rgba(255,255,255,0.5)", display: "block", mt: 1 }}
+              >
                 {formattedTimeAgo}
               </Typography>
             </Box>
           </Paper>
         </DialogContent>
-        <DialogActions onClick={handleDialogClick} sx={{ p: 2, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-          <Button 
-            onClick={() => setShareDialogOpen(false)} 
-            sx={{ 
-              color: 'rgba(255,255,255,0.7)', 
-              '&:hover': { color: 'white', backgroundColor: 'rgba(255,255,255,0.1)' } 
+        <DialogActions
+          onClick={handleDialogClick}
+          sx={{ p: 2, borderTop: "1px solid rgba(255,255,255,0.1)" }}
+        >
+          <Button
+            onClick={() => setShareDialogOpen(false)}
+            sx={{
+              color: "rgba(255,255,255,0.7)",
+              "&:hover": {
+                color: "white",
+                backgroundColor: "rgba(255,255,255,0.1)",
+              },
             }}
             disabled={isLoading}
           >
             Hủy
           </Button>
-          <Button 
-            onClick={handleShareSubmit} 
-            variant="contained" 
+          <Button
+            onClick={handleShareSubmit}
+            variant="contained"
             disabled={isLoading}
-            sx={{ 
-              bgcolor: 'rgb(29, 155, 240)', 
-              '&:hover': { bgcolor: 'rgb(26, 140, 216)' },
-              fontWeight: 'bold',
-              px: 3
+            sx={{
+              bgcolor: "rgb(29, 155, 240)",
+              "&:hover": { bgcolor: "rgb(26, 140, 216)" },
+              fontWeight: "bold",
+              px: 3,
             }}
           >
-            {isLoading ? 'Đang chia sẻ...' : 'Chia sẻ'}
+            {isLoading ? "Đang chia sẻ..." : "Chia sẻ"}
           </Button>
         </DialogActions>
       </Dialog>
-
-      <Dialog 
-        open={deleteDialogOpen} 
+      <Dialog
+        open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
         PaperProps={{
           style: {
-            borderRadius: '8px',
-            backgroundColor: 'white',
-            color: 'black',
-            width: '280px',
-            maxWidth: '90vw'
-          }
+            borderRadius: "8px",
+            backgroundColor: "white",
+            color: "black",
+            width: "280px",
+            maxWidth: "90vw",
+          },
         }}
       >
-        <DialogTitle sx={{ pb: 1, color: 'black', fontWeight: 'bold', fontSize: '18px' }}>
+        <DialogTitle
+          sx={{ pb: 1, color: "black", fontWeight: "bold", fontSize: "18px" }}
+        >
           Xóa chia sẻ
         </DialogTitle>
-        <DialogContent sx={{ pb: 2, color: 'black' }}>
-          <Typography sx={{ fontSize: '15px' }}>
+        <DialogContent sx={{ pb: 2, color: "black" }}>
+          <Typography sx={{ fontSize: "15px" }}>
             Bạn có chắc chắn muốn xóa chia sẻ này?
           </Typography>
         </DialogContent>
-        <DialogActions sx={{ display: 'flex', justifyContent: 'space-between', p: 1, borderTop: '1px solid #eee' }}>
-          <Button 
-            onClick={() => setDeleteDialogOpen(false)} 
-            sx={{ color: 'black', fontWeight: 'bold', textTransform: 'none' }}
+        <DialogActions
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            p: 1,
+            borderTop: "1px solid #eee",
+          }}
+        >
+          <Button
+            onClick={() => setDeleteDialogOpen(false)}
+            sx={{ color: "black", fontWeight: "bold", textTransform: "none" }}
             disabled={deleteLoading}
           >
             Hủy
           </Button>
-          <Button 
-            onClick={handleDeleteShare} 
-            sx={{ 
-              bgcolor: '#FF1493', 
-              color: 'white', 
-              fontWeight: 'bold',
-              textTransform: 'none',
-              '&:hover': { bgcolor: '#ff4081' }
+          <Button
+            onClick={handleDeleteShare}
+            sx={{
+              bgcolor: "#FF1493",
+              color: "white",
+              fontWeight: "bold",
+              textTransform: "none",
+              "&:hover": { bgcolor: "#ff4081" },
             }}
             disabled={deleteLoading}
           >
-            {deleteLoading ? 'Đang xóa...' : 'Xóa'}
+            {deleteLoading ? "Đang xóa..." : "Xóa"}
           </Button>
         </DialogActions>
       </Dialog>
-
-      <Dialog 
-        open={deletePostDialogOpen} 
+      <Dialog
+        open={deletePostDialogOpen}
         onClose={() => setDeletePostDialogOpen(false)}
         PaperProps={{
           style: {
-            borderRadius: '8px',
-            backgroundColor: 'white',
-            color: 'black',
-            width: '280px',
-            maxWidth: '90vw'
-          }
+            borderRadius: "8px",
+            backgroundColor: "white",
+            color: "black",
+            width: "280px",
+            maxWidth: "90vw",
+          },
         }}
       >
-        <DialogTitle sx={{ pb: 1, color: 'black', fontWeight: 'bold', fontSize: '18px' }}>
-          Xóa bài viết
+        <DialogTitle
+          sx={{ pb: 1, color: "black", fontWeight: "bold", fontSize: "18px" }}
+        >
+          Delete Post
         </DialogTitle>
-        <DialogContent sx={{ pb: 2, color: 'black' }}>
-          <Typography sx={{ fontSize: '15px' }}>
+        <DialogContent sx={{ pb: 2, color: "black" }}>
+          <Typography sx={{ fontSize: "15px" }}>
             Bạn có chắc chắn muốn xóa bài viết này?
           </Typography>
         </DialogContent>
-        <DialogActions sx={{ display: 'flex', justifyContent: 'space-between', p: 1, borderTop: '1px solid #eee' }}>
-          <Button 
-            onClick={() => setDeletePostDialogOpen(false)} 
-            sx={{ color: 'black', fontWeight: 'bold', textTransform: 'none' }}
+        <DialogActions
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            p: 1,
+            borderTop: "1px solid #eee",
+          }}
+        >
+          <Button
+            onClick={() => setDeletePostDialogOpen(false)}
+            sx={{ color: "black", fontWeight: "bold", textTransform: "none" }}
             disabled={deleteLoading}
           >
             Hủy
           </Button>
-          <Button 
-            onClick={handleDeletePost} 
-            sx={{ 
-              bgcolor: '#FF1493', 
-              color: 'white', 
-              fontWeight: 'bold',
-              textTransform: 'none',
-              '&:hover': { bgcolor: '#ff4081' }
+          <Button
+            onClick={handleDeletePost}
+            sx={{
+              bgcolor: "#FF1493",
+              color: "white",
+              fontWeight: "bold",
+              textTransform: "none",
+              "&:hover": { bgcolor: "#ff4081" },
             }}
             disabled={deleteLoading}
           >
-            {deleteLoading ? 'Đang xóa...' : 'Xóa'}
+            {deleteLoading ? "Đang xóa..." : "Xóa"}
           </Button>
         </DialogActions>
-      </Dialog>
-
-      <Dialog 
-        open={likesDialogOpen} 
+      </Dialog>{" "}
+      <Dialog
+        open={likesDialogOpen}
         onClose={() => setLikesDialogOpen(false)}
         PaperProps={{
           style: {
-            borderRadius: '8px',
-            backgroundColor: 'white',
-            color: 'black',
-            width: '320px',
-            maxWidth: '90vw'
-          }
+            borderRadius: "8px",
+            backgroundColor: "#15202b",
+            color: "white",
+            width: "320px",
+            maxWidth: "90vw",
+          },
         }}
       >
-        <DialogTitle sx={{ pb: 1, color: 'black', fontWeight: 'bold', fontSize: '18px' }}>
-          Danh sách lượt thích
+        <DialogTitle
+          sx={{
+            pb: 1,
+            color: "white",
+            fontWeight: "bold",
+            fontSize: "18px",
+            borderBottom: "1px solid #2f3336",
+          }}
+        >
+          List of Likes
         </DialogTitle>
-        <DialogContent sx={{ pb: 2, color: 'black' }}>
+        <DialogContent sx={{ pb: 2, color: "white" }}>
           {loadingLikes ? (
-            <Typography sx={{ fontSize: '15px', textAlign: 'center' }}>
+            <Typography
+              sx={{ fontSize: "15px", textAlign: "center", color: "#d9d9d9" }}
+            >
               Đang tải...
             </Typography>
           ) : likesList.length > 0 ? (
             likesList.map((like) => (
-              <Box key={like.id} className="flex items-center mb-2">
-                <Avatar 
-                  src={getLikeUserAvatar(like.userId)} 
+              <Box
+                key={like.id}
+                className="flex items-center mb-2 p-2 hover:bg-gray-800 rounded-lg cursor-pointer"
+              >
+                <Avatar
+                  src={getLikeUserAvatar(like.userId)}
                   alt={getLikeUserUsername(like.userId)}
                   sx={{ width: 32, height: 32, marginRight: 1 }}
                 />
                 <Box>
-                  <Typography variant="subtitle2" className="text-gray-800 font-medium">
+                  <Typography
+                    variant="subtitle2"
+                    className="text-white font-medium"
+                  >
                     {getLikeUserDisplayName(like.userId)}
                   </Typography>
-                  <Typography variant="caption" className="text-gray-500">
+                  <Typography variant="caption" className="text-gray-400">
                     @{getLikeUserUsername(like.userId)}
                   </Typography>
                 </Box>
               </Box>
             ))
           ) : (
-            <Typography sx={{ fontSize: '15px', textAlign: 'center' }}>
+            <Typography
+              sx={{ fontSize: "15px", textAlign: "center", color: "#d9d9d9" }}
+            >
               Không có lượt thích nào.
             </Typography>
           )}
         </DialogContent>
-        <DialogActions sx={{ display: 'flex', justifyContent: 'center', p: 1, borderTop: '1px solid #eee' }}>
-          <Button 
-            onClick={() => setLikesDialogOpen(false)} 
-            sx={{ color: 'black', fontWeight: 'bold', textTransform: 'none' }}
+        <DialogActions
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            p: 1,
+            borderTop: "1px solid #2f3336",
+          }}
+        >
+          <Button
+            onClick={() => setLikesDialogOpen(false)}
+            sx={{
+              color: "white",
+              fontWeight: "bold",
+              textTransform: "none",
+              "&:hover": { backgroundColor: "rgba(255, 255, 255, 0.1)" },
+            }}
           >
-            Đóng
+            Exit
           </Button>
-        </DialogActions>
+        </DialogActions>{" "}
       </Dialog>
+      <ShareEditDialog
+        open={shareEditDialogOpen}
+        onClose={() => setShareEditDialogOpen(false)}
+        shareData={{
+          id: post.shareId || post.id,
+          content: post.shareContent || post.content,
+          postId: post.postId,
+          userId: post.userId,
+          createdAt: post.createdAt,
+        }}
+        onShareUpdate={handleShareUpdate}
+      />
     </div>
   );
 };

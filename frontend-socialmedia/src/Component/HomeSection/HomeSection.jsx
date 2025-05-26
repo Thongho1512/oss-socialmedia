@@ -4,8 +4,6 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import ImageIcon from "@mui/icons-material/Image";
 import { useState, useEffect } from "react";
-import FmdGoodIcon from "@mui/icons-material/FmdGood";
-import TagFacesIcon from "@mui/icons-material/TagFaces";
 import TripleTCard from "./TripleTCard";
 import axios from "axios";
 import { formatAvatarUrl } from "../../utils/formatUrl";
@@ -17,6 +15,7 @@ const validationSchema = Yup.object({
 
 const HomeSection = () => {
   const { isPostLiked, getPostLikeId, fetchUserLikes } = useContext(UserContext);
+  const postFormRef = useRef(null); // Add ref for the post form section
 
   const [uploadingImage, setUploadingImage] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
@@ -52,6 +51,26 @@ const HomeSection = () => {
   useEffect(() => {
     fetchCurrentUser();
     fetchAllPosts();
+  }, []);
+
+  // Add event listener for scrolling to post form
+  useEffect(() => {
+    const scrollToPostForm = () => {
+      if (postFormRef.current) {
+        postFormRef.current.scrollIntoView({ behavior: 'smooth' });
+        const contentInput = postFormRef.current.querySelector('input[name="content"]');
+        if (contentInput) {
+          contentInput.focus();
+        }
+      }
+    };
+
+    // Listen for custom event from Navigation component
+    window.addEventListener('scrollToPostForm', scrollToPostForm);
+
+    return () => {
+      window.removeEventListener('scrollToPostForm', scrollToPostForm);
+    };
   }, []);
 
   const fetchCurrentUser = async () => {
@@ -361,8 +380,7 @@ const HomeSection = () => {
           Welcome to the Home Page
         </h1>
       </section>
-      <section className={"pb-10"}>
-        <div className="flex space-x-5 ">
+      <section className={"pb-10"} ref={postFormRef}>        <div className="flex space-x-5 " ref={postFormRef}>
           <Avatar
             alt={userData?.username || "username"}
             src={formatAvatarUrl(userAvatar || userData?.avatarUrl)}
@@ -438,27 +456,22 @@ const HomeSection = () => {
                       </div>
                     ))}
                   </div>
-                )}
-                <div className="flex justify-between items-center mt-5">
-                  <div className="flex space-x-5 items-center">
-                    <FmdGoodIcon className="text-[#1d9bf0]" />
-                    <TagFacesIcon className="text-[#1d9bf0]" />
-                    <div>
-                      <Button
-                        sx={{
-                          width: "100%",
-                          borderRadius: "20px",
-                          paddingY: "8px",
-                          paddingX: "20px",
-                          bgcolor: "#1e88e5",
-                        }}
-                        variant="contained"
-                        type="submit"
-                        disabled={posting}
-                      >
-                        {posting ? "Posting..." : "TripleT"}
-                      </Button>
-                    </div>
+                )}                <div className="flex justify-between items-center mt-5">
+                  <div className="flex items-center">
+                    <Button
+                      sx={{
+                        width: "100%",
+                        borderRadius: "20px",
+                        paddingY: "8px",
+                        paddingX: "20px",
+                        bgcolor: "#1e88e5",
+                      }}
+                      variant="contained"
+                      type="submit"
+                      disabled={posting}
+                    >
+                      {posting ? "Posting..." : "TripleT"}
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -483,8 +496,8 @@ const HomeSection = () => {
             },
           }}
         >
-          <Tab label="TẤT CẢ BÀI VIẾT" />
-          <Tab label="NGƯỜI TÔI THEO DÕI" />
+          <Tab label="All POST" />
+          <Tab label="FOLLOWING'S POST" />
         </Tabs>
       </Box>
 

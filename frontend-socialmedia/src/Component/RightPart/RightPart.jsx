@@ -188,13 +188,13 @@ const RightPart = ({ onUserSelect }) => {
 
       {/* Footer */}
       <div className="mt-4 px-4 text-xs text-gray-500">
-        <span className="mr-3 hover:underline cursor-pointer">Terms of Service</span>
-        <span className="mr-3 hover:underline cursor-pointer">Privacy Policy</span>
-        <span className="mr-3 hover:underline cursor-pointer">Cookie Policy</span>
-        <span className="mr-3 hover:underline cursor-pointer">Accessibility</span>
-        <span className="mr-3 hover:underline cursor-pointer">Ads info</span>
-        <span className="mr-3 hover:underline cursor-pointer">More...</span>
-        <div className="mt-1">© 2025 TripleT Corp.</div>
+        <span className="mr-3 hover:underline cursor-pointer"></span>
+        <span className="mr-3 hover:underline cursor-pointer"></span>
+        <span className="mr-3 hover:underline cursor-pointer"></span>
+        <span className="mr-3 hover:underline cursor-pointer"></span>
+        <span className="mr-3 hover:underline cursor-pointer"></span>
+        <span className="mr-3 hover:underline cursor-pointer"></span>
+        <div className="mt-1"></div>
       </div>
 
       {/* Messages Modal */}

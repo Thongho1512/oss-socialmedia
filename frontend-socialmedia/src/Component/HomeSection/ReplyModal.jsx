@@ -65,13 +65,11 @@ export default function ReplyModal({ handleClose, open }) {
               src="https://yt3.ggpht.com/MKAbGjzzrPfP1n1NH9wNHSN9HR3dTugpNEpg5bBGvznkWKuGU5xPP7ckH0hBqGl4V3FEXH_B=s48-c-k-c0x00ffffff-no-rj"
             />
             <div className="w-full">
-              <div className="flex justify-between item-center">
-                <div className="flex cursor-pointer items-center space-x-2">
-                  <span className="font-semibold">Thắng Gấp</span>
+              <div className="flex justify-between item-center">                <div className="flex cursor-pointer items-center space-x-2">
+                  <span className="font-semibold">Thang Gap</span>
                   <span className="text-gray-600">@thanggap . 2m </span>
                 </div>
-              </div>
-              <div className="mt-2">
+              </div>              <div className="mt-2">
                 <div
                   onClick={() => navigate(`/triplet/${3}`)}
                   className="cursor-pointer"

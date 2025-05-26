@@ -11,15 +11,14 @@ const Login = () => {
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const navigate = useNavigate();
-  
-  // Kiểm tra xem người dùng đã đăng nhập chưa
+    // Check if the user is already logged in
   useEffect(() => {
     const token = localStorage.getItem("access_token");
     const userId = localStorage.getItem("user_id");
     
     if (token && userId) {
-      // Đã đăng nhập, không tự động chuyển hướng
-      console.log("Người dùng đã đăng nhập.");
+      // Already logged in, don't automatically redirect
+      console.log("User is already logged in.");
     }
   }, [navigate]);
 
@@ -70,17 +69,14 @@ const Login = () => {
       const response = await axios.post(
         "http://localhost:8080/api/v1/auth/login",
         loginPayload
-      );
-
-      // Lưu access token vào localStorage
+      );      // Save access token to localStorage
       localStorage.setItem("access_token", response.data.access_token);
       localStorage.setItem("user_id", response.data.user.id);
 
-      console.log("Đăng nhập thành công:", response.data);
-      // Chuyển hướng đến homepage
-      navigate("/homepage", { replace: true });
-    } catch (error) {
-      console.error("Lỗi đăng nhập:", error.response);
+      console.log("Login successful:", response.data);
+      // Redirect to homepage
+      navigate("/homepage", { replace: true });    } catch (error) {
+      console.error("Login error:", error.response);
       // Display specific error for incorrect password
       setPasswordError("Incorrect password for this email");
     }

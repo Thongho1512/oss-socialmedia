@@ -30,14 +30,12 @@ const VerifyEmail = () => {
       return;
     }
 
-    try {
-      await axios.post("http://localhost:8080/api/v1/email/send", {
-        recipientEmails: [email], // Gửi email
+    try {      await axios.post("http://localhost:8080/api/v1/email/send", {
+        recipientEmails: [email], // Send email
       });
 
-      alert("Email xác minh đã được gửi! Kiểm tra hộp thư của bạn.");
-    } catch (error) {
-      alert(error?.message || "Gửi email xác minh thất bại!");
+      alert("Verification email has been sent! Check your inbox.");    } catch (error) {
+      alert(error?.message || "Failed to send verification email!");
     }
   };
 

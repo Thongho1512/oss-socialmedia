@@ -35,7 +35,7 @@
 //         }
 //       );
 
-//       console.log("Posts API Response:", response.data); // Log để debug
+//       console.log("Posts API Response:", response.data); // Log for debugging
 
 //       if (response.data.Status === 200) {
 //         const { posts, pageNumber, pageSize, totalPages, totalElements } =
@@ -58,14 +58,14 @@
 //     }
 //   };
 
-//   // Hàm để tải thêm posts (pagination)
+//   // Function to load more posts (pagination)
 //   const loadMorePosts = async () => {
 //     if (pageInfo.pageNumber < pageInfo.totalPages - 1) {
 //       await fetchPosts(pageInfo.pageNumber + 1, pageInfo.pageSize);
 //     }
 //   };
 
-//   // Hàm để refresh posts
+//   // Function to refresh posts
 //   const refreshPosts = async () => {
 //     setLoading(true);
 //     await fetchPosts(0, pageInfo.pageSize);

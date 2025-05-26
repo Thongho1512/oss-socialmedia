@@ -10,6 +10,7 @@ import Avatar from "@mui/material/Avatar";
 import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 import FormControl from "@mui/material/FormControl";
+import { formatAvatarUrl } from "../../utils/formatUrl";
 import InputLabel from "@mui/material/InputLabel";
 import FormHelperText from "@mui/material/FormHelperText";
 import { CircularProgress, Snackbar, Alert, Divider, Typography, Accordion, AccordionSummary, AccordionDetails } from "@mui/material";
@@ -29,6 +30,9 @@ const ProfileModal = ({ open, handleClose, userData, onProfileUpdate }) => {
     message: '',
     severity: 'success'
   });
+  
+  // Get avatar URL from userData
+  const avatarUrl = userData?.avatarUrl ? formatAvatarUrl(userData.avatarUrl) : null;
 
   // Validation schema for form fields
   const validationSchema = Yup.object({
@@ -523,7 +527,7 @@ const ProfileModal = ({ open, handleClose, userData, onProfileUpdate }) => {
                       height: { xs: "5rem", sm: "7rem", md: "10rem" },
                       border: "4px solid black",
                     }}
-                    src={userData?.avatarUrl || "https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg"}
+                    src={avatarUrl || "https://static.oneway.vn/post_content/2022/07/21/file-1658342005830-resized.jpg"}
                   />
                   <input
                     className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer" 
