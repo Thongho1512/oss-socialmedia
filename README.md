@@ -20,7 +20,7 @@ install jdk 21, maven 3.9.9, mongodb 8.0, apache tomcat 10.0.20, visual studio c
 
 ```bash
 SENDINBLUE_API_KEY=your_brevo_api_key_here(1)
-
+```
 
 3. Chạy ứng dụng.
 - Chạy ứng dụng bằng mvn tại folder socialmedia.
