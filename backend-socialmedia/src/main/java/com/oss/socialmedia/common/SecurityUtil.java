@@ -93,7 +93,7 @@ public class SecurityUtil {
         //handle permission
         Set<String> permissionsId  = new HashSet<>();
         for(String role: rolesId){
-            permissionsId.addAll(roleService.findByName(role).getPermissions());
+            permissionsId.addAll(roleService.findById(role).getPermissions());
         }
         Set<String> permissionsName = new HashSet<>();
         for(String permissionId : permissionsId){
