@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,6 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 public class PermissionController {
     private final PermissionService permissionService;
 
+    @PreAuthorize("hasAuthority('get all permissions')")
     @Operation(summary = "permissions", description = "Fetch all permissions")
     @GetMapping("")
     public ResponseEntity<Map<String, Object>> getList(

@@ -6,6 +6,7 @@ import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -55,26 +56,26 @@ public class SecurityConfiguration {
         };
 
         http
-                .csrf(c -> c.disable())
-                .cors(Customizer.withDefaults())
-                .authorizeHttpRequests(
-                        authz -> authz
-                                .requestMatchers(whiteList).permitAll()
-                                .anyRequest().authenticated())
-
-                // khi thêm câu lệnh dưới sẽ mặc định thêm BearerTokenAuthenticationFilter( tự động tác bearer token) -> cấu hình JwtDecoder
-                .oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults())
-                        .authenticationEntryPoint(customAuthenticationEntryPoint)) // handle bearer token exception
-                // .exceptionHandling(
-                // exceptions -> exceptions
-                // .authenticationEntryPoint(customAuthenticationEntryPoint) // 401
-                // .accessDeniedHandler(new BearerTokenAccessDeniedHandler())) // 403
-
-                .formLogin(f -> f.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+            .csrf(csrf -> csrf.disable())
+            .cors(Customizer.withDefaults())
+            .authorizeHttpRequests(authz -> authz
+                .requestMatchers(whiteList).permitAll()
+                // .requestMatchers(HttpMethod.POST, "/api/v1/permissions/**").hasAuthority("PERMISSION_CREATE")
+                // .requestMatchers(HttpMethod.DELETE, "/api/v1/permissions/**").hasAuthority("PERMISSION_DELETE")
+                .anyRequest().authenticated()
+            )
+            .oauth2ResourceServer(oauth2 -> oauth2
+                .jwt(jwt -> jwt
+                    .jwtAuthenticationConverter(jwtAuthenticationConverter())
+                )
+                .authenticationEntryPoint(customAuthenticationEntryPoint)
+            )
+            .formLogin(form -> form.disable())
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         return http.build();
     }
+
     @Bean
     public WebSecurityCustomizer ignoreResources() {
         return webSecurity -> webSecurity

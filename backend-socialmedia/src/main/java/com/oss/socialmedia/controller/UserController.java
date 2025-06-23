@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
@@ -31,7 +32,7 @@ public class UserController {
     private final UserService userService;
     private final PostService postService;
 
-
+    @PreAuthorize("hasAuthority('get all users')")
     @Operation(summary = "users", description = "Fetch all users")
     @GetMapping("")
     public ResponseEntity<Map<String, Object>> getList(

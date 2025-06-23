@@ -178,6 +178,7 @@ public class SecurityUtil {
         return Optional.ofNullable(extractPrincipal(securityContext.getAuthentication()));
     }
 
+    
     private static String extractPrincipal(Authentication authentication) {
         if (authentication == null) {
             return null;
