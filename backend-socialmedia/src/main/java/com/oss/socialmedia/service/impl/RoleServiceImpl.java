@@ -2,6 +2,7 @@ package com.oss.socialmedia.service.impl;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -118,5 +119,10 @@ public class RoleServiceImpl implements RoleService{
     public void delete(String id) {
         RoleEntity role = findById(id);
         roleRepository.delete(role);
+    }
+
+    @Override
+    public RoleEntity findByName(String roleName) {
+        return roleRepository.findByName(roleName);
     }
 }

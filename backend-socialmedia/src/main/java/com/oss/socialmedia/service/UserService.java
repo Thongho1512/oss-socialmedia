@@ -1,6 +1,8 @@
 package com.oss.socialmedia.service;
 
 
+import java.util.Set;
+
 import com.oss.socialmedia.controller.request.ReqAvatarUrl;
 import com.oss.socialmedia.controller.request.ReqBio;
 import com.oss.socialmedia.controller.request.ReqCreationUserDTO;
@@ -36,6 +38,7 @@ public interface UserService {
     UserEntity handleCreateUserRegister(ReqCreationUserDTO user);
 
     UserDTO convertToUserDTO(UserEntity userHasSaved);
+
 
     void updateBio(ReqBio bio);
     void updateAvatarUrl(ReqAvatarUrl avatarUrl);

@@ -15,5 +15,5 @@ public interface RoleRepository extends MongoRepository<RoleEntity, String>, Cus
             "] }")
     Page<RoleEntity> searchByKeyword(String keyword, Pageable pageable);
     boolean existsByName(String name);
-
+    RoleEntity findByName(String roleName);
 }

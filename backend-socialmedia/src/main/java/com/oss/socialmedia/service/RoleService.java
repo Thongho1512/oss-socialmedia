@@ -15,4 +15,6 @@ public interface RoleService {
     void update(ReqUpdateRoleDTO req);
 
     void delete(String id);
+    
+    RoleEntity findByName(String roleName);
 }
