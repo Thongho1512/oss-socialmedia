@@ -1,5 +1,6 @@
 package com.oss.socialmedia.controller.request;
 
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
@@ -18,6 +19,7 @@ import jakarta.validation.constraints.Size;
 @Getter
 @Setter
 @ToString
+@Builder
 public class ReqCreationUserDTO implements Serializable {
 
     @NotBlank(message = "Lastname must not be blank")

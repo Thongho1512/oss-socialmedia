@@ -136,10 +136,19 @@ public class UserServiceImpl implements UserService {
     @Override
     public String add(ReqCreationUserDTO req) {
         log.info("Save user: {}", req);
+        if (userRepository.existsByEmail(req.getEmail())) {
+            throw new IllegalArgumentException("Email already exists");
+        }
+        if (userRepository.existsByUsername(req.getUsername())) {
+            throw new IllegalArgumentException("Username already exists");
+        }
+        if (req.getPassword() == null || req.getPassword().isEmpty()) {
+            throw new IllegalArgumentException("Password cannot be empty");
+        }
         UserEntity user = new UserEntity();
         user.setLastName(req.getLastName());
         user.setUsername(req.getUsername());
-        user.setPassword(req.getPassword());
+        user.setPassword(passwordEncoder.encode(req.getPassword()));
         user.setDob(req.getDob());
         user.setEmail(req.getEmail());
         user.setFirstName(req.getFirstName());
@@ -174,7 +183,7 @@ public class UserServiceImpl implements UserService {
     public void changePassword(ReqPasswordUserDTO req) {
         log.info("Change password for user: {}", req);
         UserEntity user = getUser(req.getId());
-        if (req.getComfirmPassword().equals(req.getComfirmPassword()))
+        if (req.getPassword().equals(req.getComfirmPassword()))
             user.setPassword(passwordEncoder.encode(req.getPassword()));
         userRepository.save(user);
     }
