@@ -42,7 +42,7 @@ jwt:
     
 brevo:
   api:
-    key: ${SENDINBLUE_API_KEY}
+    key: ${SENDINBLUE_API_KEY:DUMMY}
     url: https://api.brevo.com/v3/smtp/email
 
 file:

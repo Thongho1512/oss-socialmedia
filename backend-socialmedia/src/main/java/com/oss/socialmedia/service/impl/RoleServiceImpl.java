@@ -2,7 +2,6 @@ package com.oss.socialmedia.service.impl;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -21,16 +20,13 @@ import com.oss.socialmedia.exception.ResourceNotFoundException;
 import com.oss.socialmedia.model.RoleEntity;
 import com.oss.socialmedia.repository.RoleRepository;
 import com.oss.socialmedia.service.RoleService;
-import com.oss.socialmedia.service.mapper.RoleMapper;
 
 @Service
 public class RoleServiceImpl implements RoleService{
     private final RoleRepository roleRepository;
-    private final RoleMapper roleMapper;
 
-    public RoleServiceImpl(RoleRepository roleRepository, RoleMapper roleMapper){
+    public RoleServiceImpl(RoleRepository roleRepository){
         this.roleRepository = roleRepository;
-        this.roleMapper = roleMapper;
     }
 
     @Override
@@ -98,7 +94,11 @@ public class RoleServiceImpl implements RoleService{
         if(roleRepository.existsByName(req.getName())){
             throw new InvalidParameterException("Name attribute already exist.");
         } else {
-            RoleEntity role = roleMapper.creationDtoToEntity(req);
+            RoleEntity role = RoleEntity.builder()
+                    .name(req.getName())
+                    .description(req.getDescription())
+                    .permissions(req.getPermissions())
+                    .build();
             role.setCreatedAt(Instant.now());
             return roleRepository.save(role).getId();
         }
@@ -109,7 +109,14 @@ public class RoleServiceImpl implements RoleService{
         if(roleRepository.existsByName(req.getName())){
             throw new InvalidParameterException("Name attribute already exist.");
         } else {
-            RoleEntity role = roleMapper.updateDtoToEntity(req);
+            RoleEntity role = RoleEntity.builder()
+                    .id(req.getId())
+                    .name(req.getName())
+                    .description(req.getDescription())
+                    .permissions(req.getPermissions())
+                    .build();
+            role.setCreatedAt(findById(req.getId()).getCreatedAt());
+            role.setCreatedBy(findById(req.getId()).getCreatedBy());
             role.setUpdatedAt(Instant.now());
             roleRepository.save(role);
         }

@@ -34,11 +34,11 @@
 
 	<dependencies>
 		<!--mapstruct-->
-		<dependency>
+		<!-- <dependency>
 			<groupId>org.mapstruct</groupId>
 			<artifactId>mapstruct</artifactId>
 			<version>1.6.0.Beta1</version>
-		</dependency>
+		</dependency> -->
 		<!--Websocket-->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -123,12 +123,25 @@
 			<optional>true</optional>
 		</dependency>
 
+		<!--test controller, service -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-
+		<!-- test controller has role or permission -->
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!--for mock bean -->
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-inline</artifactId>
+			<version>5.2.0</version> 
+			<scope>test</scope>
+		</dependency>
 		<!-- Swagger -->
 		<dependency>
 			<groupId>org.springdoc</groupId>
@@ -204,6 +217,7 @@
 					</excludes>
 				</configuration>
 			</plugin>
+			
 		</plugins>
 		<finalName>socialmedia</finalName>
 	</build>

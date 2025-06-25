@@ -22,20 +22,17 @@ import com.oss.socialmedia.model.PermissionEntity;
 import com.oss.socialmedia.repository.PermissionRepository;
 import com.oss.socialmedia.repository.RoleRepository;
 import com.oss.socialmedia.service.PermissionService;
-import com.oss.socialmedia.service.mapper.PermissionMapper;
 
 
 @Service
 public class PermissionServiceImpl implements PermissionService{
 
     private final PermissionRepository permissionRepository;
-    private final PermissionMapper permissionMapper;
     private final RoleRepository roleRepository;
 
     public PermissionServiceImpl(PermissionRepository permissionRepository,
-    PermissionMapper permissionMapper, RoleRepository roleRepository){
+     RoleRepository roleRepository){
         this.permissionRepository = permissionRepository;
-        this.permissionMapper = permissionMapper;
         this.roleRepository = roleRepository;
     }
 
@@ -104,13 +101,18 @@ public class PermissionServiceImpl implements PermissionService{
     }
 
     @Override
-    public String add(ReqCreationPermissionDTO req) throws InvalidParameterException {        
+    public String add(ReqCreationPermissionDTO req)  {        
         
         if(permissionRepository.existsByNameAndApiPathAndMethodAndModule(
             req.getName(), req.getApiPath(), req.getMethod(), req.getModule())){
                 throw new InvalidParameterException("Permission already exist!");
             }
-        PermissionEntity entity = permissionMapper.PermissionDTOtoPermissionEntity(req);
+        PermissionEntity entity = PermissionEntity.builder()
+            .name(req.getName())
+            .apiPath(req.getApiPath())
+            .method(req.getMethod())
+            .module(req.getModule())
+            .build();
         entity.setCreatedAt(Instant.now());
         return permissionRepository.save(entity).getId();
     }
@@ -118,7 +120,15 @@ public class PermissionServiceImpl implements PermissionService{
     @Override
     public void update(ReqUpdatePermissionDTO req) {
         PermissionEntity permission = findById(req.getId());
-        permission = permissionMapper.reqUpdateToEntity(req);
+        permission = PermissionEntity.builder()
+            .id(permission.getId())
+            .name(req.getName())
+            .apiPath(req.getApiPath())
+            .method(req.getMethod())
+            .module(req.getModule())
+            .createdAt(permission.getCreatedAt())
+            .createdBy(permission.getCreatedBy())
+            .build();
         permission.setUpdatedAt(Instant.now());
         if(permissionRepository.existsByNameAndApiPathAndMethodAndModule(
             permission.getName(), permission.getApiPath(), permission.getMethod(), permission.getModule()
@@ -134,6 +144,10 @@ public class PermissionServiceImpl implements PermissionService{
     @Transactional
     public void delete(String id) {
         PermissionEntity permission = findById(id);
+        if (permission == null) {
+            throw new ResourceNotFoundException("Permission not found");
+        }
+        // Delete the permission from roles
         roleRepository.deleteElementPermissionInRole(id);
         permissionRepository.deleteById(id);
     }
