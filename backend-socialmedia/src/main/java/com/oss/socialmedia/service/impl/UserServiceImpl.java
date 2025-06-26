@@ -183,9 +183,10 @@ public class UserServiceImpl implements UserService {
     public void changePassword(ReqPasswordUserDTO req) {
         log.info("Change password for user: {}", req);
         UserEntity user = getUser(req.getId());
-        if (req.getPassword().equals(req.getComfirmPassword()))
+        if (req.getPassword().equals(req.getComfirmPassword())){
             user.setPassword(passwordEncoder.encode(req.getPassword()));
-        userRepository.save(user);
+            userRepository.save(user);
+        }
     }
 
     @Override

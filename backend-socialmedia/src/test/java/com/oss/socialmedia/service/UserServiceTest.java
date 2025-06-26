@@ -13,6 +13,7 @@ import org.springframework.data.domain.Pageable;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +29,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.oss.socialmedia.controller.request.ReqCreationUserDTO;
+import com.oss.socialmedia.controller.request.ReqPasswordUserDTO;
 import com.oss.socialmedia.controller.response.UserPageDTO;
+import com.oss.socialmedia.exception.ResourceNotFoundException;
 import com.oss.socialmedia.model.UserEntity;
 import com.oss.socialmedia.repository.UserRepository;
 import com.oss.socialmedia.service.impl.UserServiceImpl;
@@ -148,8 +151,68 @@ public class UserServiceTest {
             verify(userRepository).save(any(UserEntity.class));
         }
     }
-    @Test
-    void testChangePassword() {
+    @Nested
+    @DisplayName("Test the changePassword method")
+    class ChangePasswordTest {
+        private ReqPasswordUserDTO reqPasswordUserDTO;
+        private UserEntity user;
+        @BeforeEach
+        void initData(){
+            reqPasswordUserDTO = ReqPasswordUserDTO.builder()
+                .id("123")
+                .comfirmPassword("thongho")
+                .password("thongho")
+                .build();
+
+            user = UserEntity.builder()
+                .id("123")
+                .password("abc")
+                .build();
+            
+        }
+
+        @Test
+        @DisplayName("should change password when comfirmed correctly")
+        void testChangePassword_Success() {
+            //Arrange
+            when(userRepository.findById("123")).thenReturn(Optional.of(user));
+            when(passwordEncoder.encode(reqPasswordUserDTO.getPassword())).thenReturn("HashedPassword");
+            //act
+            userService.changePassword(reqPasswordUserDTO);
+            //assert
+            assertEquals("HashedPassword", user.getPassword());
+            verify(userRepository).save(user);
+        }
+        @Test
+        @DisplayName("Should not change password if comfirmation doesn't match")
+        void testChangePassWord_PasswordMismatc(){
+            //Arrange
+            ReqPasswordUserDTO req = ReqPasswordUserDTO.builder()
+                .id("123")
+                .password("newPassword")
+                .comfirmPassword("ComfirmNewPassword")
+                .build();
+            when(userRepository.findById(req.getId())).thenReturn(Optional.of(user));
+            //act
+            userService.changePassword(req);
+            //assert
+            verify(userRepository).findById(req.getId());
+            verify(userRepository, never()).save(any());
+        }
+        @Test
+        @DisplayName("Should throw exception if user not found")
+        void testChangePassword_UserNotFound(){
+            //Arrange
+            when(userRepository.findById(reqPasswordUserDTO.getId())).thenReturn(Optional.empty());
+            //act
+            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, 
+                () -> userService.changePassword(reqPasswordUserDTO)
+            );
+            // assert
+            assertEquals("User not found", exception.getMessage());
+            verify(passwordEncoder, never()).encode(anyString());
+            verify(userRepository, never()).save(any());
+        }
     }
 
     @Test
@@ -406,22 +469,6 @@ public class UserServiceTest {
         }
     
 
-        // @Test
-        // @DisplayName("should handle whitespace-only keyword as no keyword provided")
-        // void findAllWithWhitespaceKeyword() {
-        //     // Arrange
-        //     Page<UserEntity> page = new PageImpl<>(List.of(user1, user2));
-        //     when(userRepository.findAll(any(Pageable.class)))
-        //         .thenReturn(page);
-
-        //     // Act
-        //     UserPageDTO result = userService.findAll("   ", null, 1, 5);
-
-        //     // Assert
-        //     assertNotNull(result);
-        //     assertEquals(2, result.getTotalElements());
-        //     verify(userRepository).findAll(any(Pageable.class));
-        // }
 
     }
 

@@ -4,10 +4,14 @@ import java.io.Serializable;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.ToString;
 
 @Getter
+@Setter
+@Builder
 @ToString
 public class ReqPasswordUserDTO implements Serializable {
     @NotBlank(message = "Id must not be blank")
