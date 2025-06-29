@@ -166,6 +166,7 @@ public class UserServiceImpl implements UserService {
         log.info("Update user: {}", req);
         UserEntity user = getUser(req.getId());
         user.setLastName(req.getLastName());
+        user.setUsername(req.getUsername());
         user.setDob(req.getDob());
         user.setEmail(req.getEmail());
         user.setFirstName(req.getFirstName());
@@ -248,6 +249,7 @@ public class UserServiceImpl implements UserService {
         user.setGender(req.getGender());
         user.setPhoneNumber(req.getPhoneNumber());
         user.setRoles(req.getRoles());
+        
         return user;
     }
     
@@ -264,7 +266,6 @@ public class UserServiceImpl implements UserService {
     public void updateAvatarUrl(ReqAvatarUrl avatarUrl) {
         String email = getEmailOfUserIsRequiring();
         UserEntity user = findByEmail(email);
-        
         try {
             if (avatarUrl.getAvatarFile() != null && !avatarUrl.getAvatarFile().isEmpty()) {
                 // If a file was uploaded directly

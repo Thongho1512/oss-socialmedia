@@ -25,7 +25,7 @@ public class ReqUpdateUserDTO implements Serializable {
     private String lastName;
     @NotBlank(message = "FirstName must not be blank")
     private String firstName;
-    private Date dob;
+    private Instant dob;
     @Email(message = "Email invalid")
     private String email;
     private String phoneNumber;

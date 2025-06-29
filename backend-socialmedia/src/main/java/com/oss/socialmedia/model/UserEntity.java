@@ -39,7 +39,7 @@ public class UserEntity {
     @Size(min = 1, max = 255, message = "Password must be between 1 and 255 characters")
     private String password;
     @Field("date_of_birth")
-    private Date dob;
+    private Instant dob;
     @NotNull(message = "Email cannot be null")
     @Size(min = 1, max = 255, message = "Email must be between 1 and 255 characters")
     private String email;

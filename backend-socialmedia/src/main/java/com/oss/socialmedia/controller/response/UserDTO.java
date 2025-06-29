@@ -1,6 +1,7 @@
 package com.oss.socialmedia.controller.response;
 
 import java.io.Serializable;
+import java.time.Instant;
 import java.util.Date;
 import java.util.Set;
 
@@ -12,7 +13,7 @@ public class UserDTO implements Serializable {
     private String id;
     private String lastName;
     private String firstName;
-    private Date dob;
+    private Instant dob;
     private String email;
     private String phoneNumber;
     private Gender gender;
@@ -24,7 +25,7 @@ public class UserDTO implements Serializable {
     private Set<String> roles;
     @Field("is_private")
     private boolean isPrivate;
-    
+
     
     public void setBio(String bio) {
         this.bio = bio;
@@ -58,7 +59,7 @@ public class UserDTO implements Serializable {
         this.firstName = firstName;
     }
 
-    public void setDob(Date dob) {
+    public void setDob(Instant dob) {
         this.dob = dob;
     }
 
@@ -94,7 +95,7 @@ public class UserDTO implements Serializable {
         return firstName;
     }
 
-    public Date getDob() {
+    public Instant getDob() {
         return dob;
     }
 
@@ -164,7 +165,7 @@ public class UserDTO implements Serializable {
             return this;
         }
 
-        public Builder setDob(Date dob) {
+        public Builder setDob(Instant dob) {
             user.setDob(dob);
             return this;
         }
@@ -215,5 +216,11 @@ public class UserDTO implements Serializable {
         public UserDTO build() {
             return user;
         }
+    }
+
+
+    public Object getUserName() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'getUserName'");
     }
 }

@@ -6,6 +6,7 @@ import lombok.Setter;
 import lombok.ToString;
 
 import java.io.Serializable;
+import java.time.Instant;
 import java.util.Date;
 import java.util.Set;
 
@@ -29,7 +30,7 @@ public class ReqCreationUserDTO implements Serializable {
     @NotBlank(message = "Username must not be blank")
     @Size(min = 1, max = 255, message = "Username must be between 1 and 255 characters")
     private String username;
-    private Date dob;
+    private Instant dob;
     @Email(message = "Email invalid")
     private String email;
     private String password;

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -14,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,14 +24,22 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import com.oss.socialmedia.common.Gender;
+import com.oss.socialmedia.common.SecurityUtil;
+import com.oss.socialmedia.common.Status;
+import com.oss.socialmedia.controller.request.ReqAvatarUrl;
+import com.oss.socialmedia.controller.request.ReqBio;
 import com.oss.socialmedia.controller.request.ReqCreationUserDTO;
 import com.oss.socialmedia.controller.request.ReqPasswordUserDTO;
+import com.oss.socialmedia.controller.request.ReqUpdateUserDTO;
+import com.oss.socialmedia.controller.response.UserDTO;
 import com.oss.socialmedia.controller.response.UserPageDTO;
 import com.oss.socialmedia.exception.ResourceNotFoundException;
 import com.oss.socialmedia.model.UserEntity;
@@ -44,6 +54,7 @@ public class UserServiceTest {
 
     private @Mock UserRepository userRepository;
     private @Mock PasswordEncoder passwordEncoder;
+    private @Mock SecurityUtil securityUtil;
 
     @BeforeEach
     void setUp(){
@@ -215,16 +226,81 @@ public class UserServiceTest {
         }
     }
 
-    @Test
-    void testConvertToUserDTO() {
+    @Nested
+    @DisplayName("Test the convertToUserDTO method")
+    class testConvertToUserDTO{
+        @Test
+        @DisplayName("Test conversion form userEntity to userDTO")
+        void testConvertToUserDTO_Success() {
+            // Arrange
+            UserEntity userEntity = new UserEntity();
+            userEntity.setId("123");
+            userEntity.setFirstName("John");
+            userEntity.setLastName("Doe");
+            userEntity.setEmail("john.doe@example.com");
+            userEntity.setUsername("johnny123");
+            userEntity.setDob(Instant.now());
+            userEntity.setPhoneNumber("123456789");
+            userEntity.setGender(Gender.FEMALE);
+            userEntity.setRoles(Set.of("USER"));
+            userEntity.setIsPrivate(false);
+            userEntity.setBio("This is a bio");
+            userEntity.setAvatar_url("http://example.com/avatar.jpg");
+            userEntity.setFollowerCount(100);
+            userEntity.setFollowingCount(50);
+            // Convert UserEntity to UserDTO
+            UserDTO userDTO = userService.convertToUserDTO(userEntity);
+
+            // Assertions
+            assertNotNull(userDTO, "The converted UserDTO should not be null");
+            assertEquals(userEntity.getId(), userDTO.getId(), "User ID should match");
+            assertEquals(userEntity.getFirstName(), userDTO.getFirstName(), "First name should match");
+            assertEquals(userEntity.getLastName(), userDTO.getLastName(), "Last name should match");
+            assertEquals(userEntity.getEmail(), userDTO.getEmail(), "Email should match");
+            assertEquals(userEntity.getUsername(), userDTO.getUsername(), "Username should match");
+            assertEquals(userEntity.getDob(), userDTO.getDob(), "DOB should match");
+            assertEquals(userEntity.getPhoneNumber(), userDTO.getPhoneNumber(), "Phone number should match");
+            assertEquals(userEntity.getGender(), userDTO.getGender(), "Gender should match");
+            assertEquals(userEntity.getRoles(), userDTO.getRoles(), "Roles should match");
+        }
+    }
+    @Nested
+    @DisplayName("Test the delete user method")
+    class testDeleteUser{
+        private UserEntity userEntity;
+        @BeforeEach
+        void initData(){
+            userEntity = UserEntity.builder()
+                .id("123")
+                .status(Status.ACTIVE)
+                .build();
+        }
+        @Test
+        @DisplayName("should delete user by setting status to INACTIVE")
+        void testDelete_Success() {
+            //Arrange
+            when(userRepository.findById(userEntity.getId())).thenReturn(Optional.of(userEntity));
+            //Act
+            userService.delete(userEntity.getId());
+            //assert
+            assertEquals(Status.INACTIVE, userEntity.getStatus());
+            verify(userRepository).save(userEntity);
+        }
+
+        @Test
+        @DisplayName("Should throw ResourceNotFoundException if user not found")
+        void testDeleteUser_UserNotFound(){
+            //Arrange
+            when(userRepository.findById(userEntity.getId())).thenReturn(Optional.empty());
+            //act
+            ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
+             () -> userService.delete(userEntity.getId()));
+            // assert
+            assertEquals("User not found", exception.getMessage());
+            verify(userRepository, never()).save(any());
+        }
 
     }
-
-    @Test
-    void testDelete() {
-
-    }
-
 
     private static UserEntity user1;
     private static UserEntity user2;
@@ -467,21 +543,52 @@ public class UserServiceTest {
             verify(userRepository).findAll(any(Pageable.class));
             verify(userRepository, never()).searchByKeyword(anyString(), any(Pageable.class));
         }
-    
-
-
     }
 
-    @Test
-    void testFindByEmail() {
-
+    @Nested
+    @DisplayName("Test for the findByEmail method")
+    class testFindByEmail{
+        private UserEntity userEntity;
+        @BeforeEach
+        void initData(){
+            userEntity = UserEntity.builder()
+                .id("123")
+                .email("thongho@gmail.com")
+                .build();
+        }
+        @Test
+        @DisplayName("should return a user when finding by email")
+        void testFindByEmail_Success() {
+            // Arrange
+            when(userRepository.findByEmail("thongho@gmail.com")).thenReturn(userEntity);
+            // act
+            UserEntity user = userService.findByEmail("thongho@gmail.com");
+            // Assert
+            assertEquals("thongho@gmail.com", user.getEmail());
+        }
     }
-
-    @Test
-    void testFindById() {
-
+    @Nested
+    @DisplayName("Should return a user when find a user by id")
+    class TestFindById{
+        private UserEntity userEntity;
+        @BeforeEach
+        void initData(){
+            userEntity = UserEntity.builder()
+                .id("123")
+                .email("thong@gmail.com")
+                .username("thong ho")
+                .build();
+        }
+        @Test
+        void testFindById_Success() {
+            // Arrange
+            when(userRepository.findById("123")).thenReturn(Optional.of(userEntity));
+            // Act
+            UserDTO dto = userService.findById("123");
+            // Assert
+            assertEquals("thong@gmail.com", dto.getEmail());
+        }
     }
-
     @Test
     void testFindByUsername() {
 
@@ -504,19 +611,74 @@ public class UserServiceTest {
 
     @Test
     void testUpdate() {
+        // Arrange
+        String userId = "123";
+        
+        // Create a user entity with existing data
+        UserEntity existingUser = new UserEntity();
+        existingUser.setId(userId);
+        existingUser.setFirstName("John");
+        existingUser.setLastName("Doe");
+        existingUser.setEmail("john.doe@example.com");
+        existingUser.setUsername("johnny123");
+        existingUser.setPhoneNumber("123456789");
+        existingUser.setRoles(Set.of("USER"));
+        existingUser.setIsPrivate(false);
+        
+        // Create a request DTO with updated data
+        ReqUpdateUserDTO updateRequest = new ReqUpdateUserDTO();
+        updateRequest.setId(userId);
+        updateRequest.setFirstName("Johnny");
+        updateRequest.setLastName("Smith");
+        updateRequest.setEmail("john.smith@example.com");
+        updateRequest.setPhoneNumber("987654321");
+        updateRequest.setRoles(Set.of("USER", "ADMIN"));
+        updateRequest.setIsPrivate(true);
+        
+        // Mock the repository call to return the existing user when looking for it by ID
+        when(userRepository.findById(userId)).thenReturn(java.util.Optional.of(existingUser));
+        // check before act
+        assertEquals("John", existingUser.getFirstName());
+        // Act
+        userService.update(updateRequest);
 
+        // Assert: Verify the updated values were set
+        assertEquals("Johnny", existingUser.getFirstName());
+        assertEquals("Smith", existingUser.getLastName());
+        assertEquals("john.smith@example.com", existingUser.getEmail());
+        assertEquals("987654321", existingUser.getPhoneNumber());
+        assertEquals(Set.of("USER", "ADMIN"), existingUser.getRoles());
+        // Verify that userRepository.save was called with the updated user
+        verify(userRepository).save(existingUser);
     }
 
-    @Test
-    void testUpdateAvatarUrl() {
-
+    @Nested
+    @DisplayName("Test the updateAvatarUrl method")
+    class testUpdateAvatarUrl{
+        
+        @Test
+        void testUpdateAvatarUrl_() {
+            
+        }
     }
 
-    @Test
-    void testUpdateBio() {
-
+    @Nested
+    @DisplayName("Test updateBio method")
+    class updateBio{
+        // @BeforeEach
+        // void initData(){
+        //     mockStatic(SecurityUtil.class);
+        // }
+        // @Test
+        // @DisplayName("Update bio successfully")
+        // void testUpdateBio_Success() {
+        //     ReqBio req = ReqBio.builder()
+        //         .bio("this is bio")
+        //         .build();
+        //     when(SecurityUtil.getCurrentUserLogin().isPresent()).thenReturn(true);
+        //     when(SecurityUtil.getCurrentUserLogin().get()).thenReturn();
+        // }
     }
-
     @Test
     void testUpdateFolloweeCount() {
 
