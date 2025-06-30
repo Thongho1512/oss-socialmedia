@@ -6,7 +6,7 @@ spring:
     add-properties: true
   data:
     mongodb:
-      uri: mongodb://localhost:27017/socialmedia  # MongoDB connection URI
+      uri: mongodb://localhost:27018/socialmedia  # MongoDB connection URI
   servlet:
     multipart:
       max-file-size: 300MB

@@ -10,7 +10,7 @@ services:
     environment:
       - MONGO_INITDB_DATABASE=testdb
     ports:
-      - '27017:27017'
+      - '27018:27017'
     volumes:
       - mongodb_data:/data/db
       - ./initdb.js:/docker-entrypoint-initdb.d/initdb.js
