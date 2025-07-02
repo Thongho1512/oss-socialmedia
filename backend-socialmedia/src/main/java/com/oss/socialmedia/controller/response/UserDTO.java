@@ -2,12 +2,13 @@ package com.oss.socialmedia.controller.response;
 
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.Date;
 import java.util.Set;
 
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import com.oss.socialmedia.common.Gender;
+
+
 
 public class UserDTO implements Serializable {
     private String id;
@@ -185,8 +186,8 @@ public class UserDTO implements Serializable {
             return this;
         }
 
-        public Builder setUserName(String userName) {
-            user.setUsername(userName);
+        public Builder setUserName(String username) {
+            user.setUsername(username);
             return this;
         }
         public Builder setBio(String bio) {
@@ -216,11 +217,5 @@ public class UserDTO implements Serializable {
         public UserDTO build() {
             return user;
         }
-    }
-
-
-    public Object getUserName() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getUserName'");
     }
 }

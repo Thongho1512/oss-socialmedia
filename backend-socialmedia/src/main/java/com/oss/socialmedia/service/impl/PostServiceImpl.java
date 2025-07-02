@@ -28,7 +28,6 @@ import com.oss.socialmedia.controller.response.UserHomPageDTO;
 import com.oss.socialmedia.exception.ResourceNotFoundException;
 import com.oss.socialmedia.model.FollowEntity;
 import com.oss.socialmedia.model.PostEntity;
-import com.oss.socialmedia.model.UserEntity;
 import com.oss.socialmedia.repository.PostRepository;
 import com.oss.socialmedia.service.FollowService;
 import com.oss.socialmedia.service.PostService;
