@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -74,7 +75,7 @@ public class RoleServiceImpl implements RoleService{
                         .createdBy(entity.getCreatedBy())
                         .updatedBy(entity.getUpdatedBy())
                         .build())
-                .toList();
+                .collect(Collectors.toList());
         RolePageDTO res = new RolePageDTO();
         res.setPageNumber(page);
         res.setPageSize(size);

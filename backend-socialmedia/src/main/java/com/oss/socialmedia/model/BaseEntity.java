@@ -1,11 +1,9 @@
 package com.oss.socialmedia.model;
 
+import java.io.Serializable;
 import java.time.Instant;
-import java.util.Set;
 
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
-
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,14 +12,16 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
-@Getter
 @Setter
+@Getter
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-@SuperBuilder
-@Document(collection = "roles")
-public class RoleEntity extends BaseEntity{
-    private String name;
-    private String description;
-    private Set<String> permissions;
+public class BaseEntity implements Serializable{
+    @Id
+    protected String id;
+    protected Instant createdAt;
+    protected Instant updatedAt;
+    protected String createdBy;
+    protected String updatedBy;
 }

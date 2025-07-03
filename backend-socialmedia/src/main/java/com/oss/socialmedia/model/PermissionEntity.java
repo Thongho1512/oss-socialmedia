@@ -1,8 +1,6 @@
     package com.oss.socialmedia.model;
 
-    import java.time.Instant;
 
-    import org.springframework.data.annotation.Id;
     import org.springframework.data.mongodb.core.mapping.Document;
     import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -12,15 +10,14 @@
     import lombok.Getter;
     import lombok.NoArgsConstructor;
     import lombok.Setter;
+    import lombok.experimental.SuperBuilder;
     @Getter
     @Setter
     @NoArgsConstructor
     @AllArgsConstructor
-    @Builder
+    @SuperBuilder
     @Document(collection = "permissions")
-    public class PermissionEntity {
-        @Id
-        private String id;
+    public class PermissionEntity extends BaseEntity{
 
         @NotBlank(message = "name không được để trống")
         private String name;
@@ -33,8 +30,5 @@
         private String method;
 
         private String module;
-        private Instant createdAt;
-        private Instant updatedAt;
-        private String createdBy;
-        private String updatedBy;
+        
     }

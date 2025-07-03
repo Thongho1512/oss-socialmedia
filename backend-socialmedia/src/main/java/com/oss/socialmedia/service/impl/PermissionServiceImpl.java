@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -84,7 +86,8 @@ public class PermissionServiceImpl implements PermissionService{
                         .createdBy(entity.getCreatedBy())
                         .updatedBy(entity.getUpdatedBy())
                         .build())
-                .toList();
+                    .collect(Collectors.toList());
+                
         PermissionPageDTO res = new PermissionPageDTO();
         res.setPageNumber(page);
         res.setPageSize(size);

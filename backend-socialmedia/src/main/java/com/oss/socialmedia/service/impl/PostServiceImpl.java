@@ -50,6 +50,8 @@ public class PostServiceImpl implements PostService{
     @Value("${file.upload.video-dir}")
     private String videoUploadDir; // Thư mục lưu video
 
+    
+
     @Override
     public PostPageDTO findAll(String keyword, String sort, int page, int size) {
         // Sorting
@@ -108,6 +110,7 @@ public class PostServiceImpl implements PostService{
     public PostEntity findById(String id) {
         return postRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Resource not found"));
     }
+
 
 
     // lưu vào thư mục 
