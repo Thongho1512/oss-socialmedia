@@ -3,7 +3,6 @@ FROM openjdk:21
 ARG JAR_FILE=target/*.jar
 
 COPY ${JAR_FILE} socialmedia.jar
-COPY .env .env
 
 ENTRYPOINT ["java", "-jar", "socialmedia.jar"]
 
